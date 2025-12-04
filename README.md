@@ -80,7 +80,3 @@ Makers and engineers who prototype hardware and want to track everything from pa
 ## Contributing
 
 Contributions welcome! Please read our contributing guidelines before submitting pull requests.
-
-## License
-
-Custom Source-Available License
