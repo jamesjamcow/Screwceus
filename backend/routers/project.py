@@ -21,7 +21,7 @@ def create_project(request: ProjectBase, response: Response, db: Session = Depen
     
     return new_project
 
-@router.get("/{project_id}", response_model=ProjectBaseResponse)
+@router.get("/find/{project_id}", response_model=ProjectBaseResponse)
 def get_project(project_id: str, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -33,7 +33,8 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
 @router.get("/get_all", response_model=list[ProjectBaseResponse])
 def get_all_projects(db: Session = Depends(get_db)):
     projects = db.query(Project).all()
-    return [parse_project(project) for project in projects]
+
+    return projects
 
 def parse_project(project: Project) -> ProjectBaseResponse:
     screw_list = []

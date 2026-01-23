@@ -11,7 +11,7 @@ app = FastAPI(tittle = "Screwceus", description = "Learning the basics", version
 
 app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_HOSTS, allow_credentials=True, allow_methods=["*"],
+        allow_origins=settings.ALLOWED_ORIGINS, allow_credentials=True, allow_methods=["*"],
         allow_headers=["*"],
     )
 
