@@ -10,6 +10,7 @@ class ProjectBase(BaseModel):
 class ScrewBase(BaseModel):
     name: str
     length: int
+    amount: Optional[int] = 0
     diameter: int
     typeOfHead: str
     
@@ -32,10 +33,16 @@ class ScrewCreate(ScrewBase):
     timecreated: Optional[datetime] = None
 
 class ScrewUpdate(ScrewBase):
-    amount: int
     typeUpdate: str
     class Config:
         from_attributes = True
+        
+class ScrewAdjustAmount(ScrewBase):
+    action: str  # "increment" or "decrement"
+    
+    class Config:
+        from_attributes = True
+    
         
 class ProjectCreate(ProjectBase):
     id: Optional[str] = None

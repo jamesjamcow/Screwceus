@@ -30,3 +30,44 @@ def create_screw(request:ScrewCreate, db: Session = Depends(get_db)):
     db.add(new_screw)
     db.commit()
     return new_screw
+
+@router.put("/{screw_id}", response_model=ScrewResponse)
+def update_screw(screw_id: str, request: ScrewUpdate, db: Session = Depends(get_db)):
+    screw = db.query(Screw).filter(Screw.id == screw_id).first()
+    if not screw:
+        raise HTTPException(status_code=404, detail="Screw not found")
+    
+    if request.typeUpdate == "modify":
+        screw.name = request.name
+        screw.length = request.length
+        screw.diameter = request.diameter
+        screw.typeOfHead = request.typeOfHead
+    elif request.typeUpdate == "adjust_amount":
+        screw.amount = request.amount
+    else:
+        raise HTTPException(status_code=400, detail="Invalid typeUpdate value")
+    
+    db.commit()
+    return screw
+
+@router.put("/adjust_amount/{screw_id}", response_model=ScrewResponse)
+def adjust_amount_screw(screw_id: str, request: ScrewUpdate, db: Session = Depends(get_db)):
+    screw = db.query(Screw).filter(Screw.id == screw_id).first()
+    if not screw:
+        raise HTTPException(status_code=404, detail="Screw not found")
+
+    
+    
+    db.commit()
+    return screw
+
+@router.delete("/{screw_id}")
+def delete_screw(screw_id: str, db: Session = Depends(get_db)):
+    screw = db.query(Screw).filter(Screw.id == screw_id).first()
+    if not screw:
+        raise HTTPException(status_code=404, detail="Screw not found")
+    
+    db.delete(screw)
+    db.commit()
+    return {"detail": "Screw deleted successfully"}
+
