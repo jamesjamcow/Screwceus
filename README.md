@@ -3,12 +3,23 @@
 How to set it up. 
 1. install uv, https://docs.astral.sh/uv/
 2. cd into backend, run uv init, and uv sync
-3. then run uv run main.py
+3. in the backend folder, make a .env file and add
+
+"
+DATABASE_URL=sqlite:///./databse.db
+
+API_PREFIX=/api
+DEBUG=True
+
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+"
+
+5. then run uv run main.py
 , keep in mind that the db will be empty because it creates a new table.
-5. ON a seperate terminal, cd into frontend
-6. npm install, npm run dev
+6. ON a seperate terminal, cd into frontend
+7. npm install, npm run dev
 it should work.
-7. if something is broken, make sure react app is on localhost port 5173 and the fast api is 8000
+8. if something is broken, make sure react app is on localhost port 5173 and the fast api is 8000
 
 
 **One-liner:** Track your screws, modules, projects, and prototyping mistakes while documenting your entire hardware build journey.
