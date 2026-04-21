@@ -1,0 +1,39 @@
+<svg width="1280" height="860" viewBox="0 0 1280 860" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#153C4A" />
+      <stop offset="40%" stop-color="#285A66" />
+      <stop offset="100%" stop-color="#C07F4A" />
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="860" fill="url(#bg)" />
+  <rect x="56" y="66" width="1168" height="728" rx="28" fill="#182E38" fill-opacity="0.65" />
+  <rect x="96" y="106" width="620" height="648" rx="16" fill="url(#glass)" stroke="#A4C1CB" stroke-opacity="0.75" />
+  <rect x="752" y="106" width="432" height="302" rx="16" fill="#20333A" fill-opacity="0.8" stroke="#A4C1CB" stroke-opacity="0.5" />
+  <rect x="752" y="452" width="432" height="302" rx="16" fill="#20333A" fill-opacity="0.8" stroke="#A4C1CB" stroke-opacity="0.5" />
+
+  <text x="140" y="210" fill="#E6F0F4" font-family="Verdana, sans-serif" font-size="58" letter-spacing="2">
+    Document Preview
+  </text>
+  <text x="140" y="286" fill="#BDD6DE" font-family="Verdana, sans-serif" font-size="30">
+    Placeholder Image - sketch directly over this area.
+  </text>
+
+  <g opacity="0.8">
+    <circle cx="848" cy="205" r="52" fill="#5DABCF" />
+    <circle cx="1007" cy="205" r="52" fill="#6DCD9B" />
+    <circle cx="1166" cy="205" r="52" fill="#E8A970" />
+  </g>
+
+  <text x="808" y="338" fill="#D9E9EF" font-family="Verdana, sans-serif" font-size="26">
+    Status Blocks
+  </text>
+  <text x="808" y="684" fill="#D9E9EF" font-family="Verdana, sans-serif" font-size="26">
+    Notes / Tags
+  </text>
+</svg>

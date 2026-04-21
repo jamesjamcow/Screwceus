@@ -1,3 +1,7 @@
+import { Link } from "react-router-dom";
+
+import { toPathSafeProjectId } from "../../lib/projectRouting";
+
 const NAV_ITEMS = [
   { id: "design", label: "Design", Icon: DesignIcon },
   { id: "overview", label: "Overview", Icon: OverviewIcon },
@@ -5,24 +9,49 @@ const NAV_ITEMS = [
   { id: "issue-logs", label: "Issue Logs", Icon: IssueLogsIcon },
 ];
 
-export default function ProjectMiniNav({ active = "overview" }) {
+export default function ProjectMiniNav({ active = "overview", projectId }) {
+  const routeProjectId = toPathSafeProjectId(projectId);
+
   return (
     <nav aria-label="Project sections" className="mt-4 flex flex-wrap items-center gap-8 text-[1.65rem] md:text-[1.15rem]">
-      {NAV_ITEMS.map(({ id, label, Icon }) => (
-        <button
-          key={id}
-          type="button"
-          className={`inline-flex items-center gap-2 transition-opacity ${
-            active === id ? "font-medium text-[#141414]" : "font-normal text-[#151515] hover:opacity-75"
-          }`}
-          aria-current={active === id ? "page" : undefined}
-        >
-          <Icon className="h-5 w-5 md:h-[19px] md:w-[19px]" />
-          {label}
-        </button>
-      ))}
+      {NAV_ITEMS.map(({ id, label, Icon }) => {
+        const href = resolveTabHref(id, routeProjectId);
+        const className = `inline-flex items-center gap-2 transition-opacity ${
+          active === id ? "font-medium text-[#141414]" : "font-normal text-[#151515] hover:opacity-75"
+        }`;
+
+        if (!href) {
+          return (
+            <span key={id} className={`${className} cursor-default`}>
+              {renderIcon(Icon)}
+              {label}
+            </span>
+          );
+        }
+
+        return (
+          <Link key={id} to={href} className={className} aria-current={active === id ? "page" : undefined}>
+            {renderIcon(Icon)}
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
+}
+
+function renderIcon(IconComponent) {
+  return IconComponent({ className: "h-5 w-5 md:h-[19px] md:w-[19px]" });
+}
+
+function resolveTabHref(tabId, projectId) {
+  if (tabId === "design") {
+    return `/project/${projectId}`;
+  }
+  if (tabId === "overview") {
+    return `/project/${projectId}/overview`;
+  }
+  return null;
 }
 
 function DesignIcon({ className = "" }) {

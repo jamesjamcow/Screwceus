@@ -1,8 +1,9 @@
-import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useMemo, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
+import { formatProjectName, toPathSafeProjectId } from "../lib/projectRouting";
 
 const PART_ROWS = [
   { id: 1, name: "Screw", type: "M4", sizing: "Length: 40mm", quantity: 50, status: "IN stock" },
@@ -12,8 +13,26 @@ const PART_ROWS = [
 
 export default function ProjectPage() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
+  const uploadInputRef = useRef(null);
 
   const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
+  const targetProjectId = useMemo(() => toPathSafeProjectId(projectId), [projectId]);
+
+  const handleStartEntry = () => {
+    navigate(`/project/${targetProjectId}/new-entry`);
+  };
+
+  const handlePickDocument = () => {
+    uploadInputRef.current?.click();
+  };
+
+  const handleDocumentSelected = (event) => {
+    const selectedFile = event.target.files?.[0];
+    navigate(`/project/${targetProjectId}/new-entry`, {
+      state: selectedFile ? { uploadedFileName: selectedFile.name } : undefined,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
@@ -26,11 +45,12 @@ export default function ProjectPage() {
             <span className="font-semibold">{projectName}</span>
           </h1>
 
-          <ProjectMiniNav active="design" />
+          <ProjectMiniNav active="design" projectId={projectId} />
 
           <div className="mt-16 flex items-center justify-center md:mt-28">
             <button
               type="button"
+              onClick={handleStartEntry}
               className="flex flex-col items-center text-center text-[#141414] transition-opacity hover:opacity-80"
             >
               <UploadIcon className="h-16 w-16 md:h-[76px] md:w-[76px]" />
@@ -38,6 +58,22 @@ export default function ProjectPage() {
               <span className="mt-2 text-[1.6rem] leading-none md:text-[1.5rem]">or upload</span>
               <span className="mt-2 text-[1.6rem] leading-none md:text-[1.5rem]">or blank</span>
             </button>
+          </div>
+          <div className="mt-6 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={handlePickDocument}
+              className="rounded-full border border-[#6f6d6a] px-4 py-1 text-sm text-[#141414] transition-colors hover:bg-[#e3dfd8]"
+            >
+              Upload Document
+            </button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,image/*"
+              className="hidden"
+              onChange={handleDocumentSelected}
+            />
           </div>
         </section>
 
@@ -89,16 +125,6 @@ export default function ProjectPage() {
       </main>
     </div>
   );
-}
-
-function formatProjectName(projectId) {
-  if (!projectId) return "Untitled";
-
-  return decodeURIComponent(projectId)
-    .trim()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function UploadIcon({ className = "" }) {
