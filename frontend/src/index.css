@@ -1,81 +1,13 @@
+@import "tailwindcss";
+
 :root {
   color-scheme: light;
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top left, #f3f6ff, #f9f7f2 42%, #ffffff 80%);
-  color: #0f172a;
-}
-
-* {
-  box-sizing: border-box;
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-}
-
-a {
-  color: #1d4ed8;
-  text-decoration: none;
-}
-
-.layout {
-  min-height: 100vh;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #ffffffdd;
-  position: sticky;
-  top: 0;
-  backdrop-filter: blur(6px);
-}
-
-.topbar nav {
-  display: flex;
-  gap: 1rem;
-}
-
-main {
-  padding: 1.25rem;
-}
-
-.hero {
-  max-width: 720px;
-}
-
-.status {
-  font-weight: 600;
-}
-
-.grid-two {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-.panel {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 0.75rem;
-  background: white;
-}
-
-.canvas-wrap {
-  width: 100%;
-  height: 300px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #cbd5e1;
-}
-
-.konva-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #efefef;
+  color: #141414;
 }

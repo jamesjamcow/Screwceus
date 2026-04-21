@@ -6,9 +6,9 @@ export default function AnnotationCanvas() {
   const annotations = useAppStore((state) => state.annotations);
 
   return (
-    <div className="panel">
-      <h2>Annotation Layer</h2>
-      <div className="canvas-wrap konva-wrap">
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <h2 className="text-lg font-semibold text-slate-900">Annotation Layer</h2>
+      <div className="mt-2 flex h-[300px] w-full items-center justify-center overflow-hidden rounded-lg border border-slate-300">
         <Stage width={520} height={300}>
           <Layer>
             {annotations.map((item) => (
