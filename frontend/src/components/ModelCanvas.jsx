@@ -1,11 +1,11 @@
-import { OrbitControls, Box, ContactShadows, Environment } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
+import { OrbitControls, Box, ContactShadows, Environment } from "@react-three/drei";
 
 export default function ModelCanvas() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <h2 className="text-lg font-semibold text-slate-900">3D Preview</h2>
-      <div className="mt-2 h-[300px] w-full overflow-hidden rounded-lg border border-slate-300">
+    <div className="panel">
+      <h2>3D Preview</h2>
+      <div className="canvas-wrap">
         <Canvas camera={{ position: [2, 2, 2], fov: 50 }}>
           <ambientLight intensity={0.8} />
           <directionalLight position={[2, 2, 2]} intensity={1.2} />

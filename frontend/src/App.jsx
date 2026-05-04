@@ -1,32 +1,30 @@
-import { Suspense, lazy } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
 
+import EditorPage from "./pages/EditorPage";
 import HomePage from "./pages/HomePage";
 import NotFoundPage from "./pages/NotFoundPage";
 
-const EditorPage = lazy(() => import("./pages/EditorPage"));
-const NewEntryPage = lazy(() => import("./pages/NewEntryPage"));
-const ProjectPage = lazy(() => import("./pages/ProjectPage"));
-const ProjectOverviewPage = lazy(() => import("./pages/ProjectOverviewPage"));
-
 function App() {
   return (
-    <Suspense fallback={<RouteLoadingFallback />}>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/editor" element={<EditorPage />} />
-        <Route path="/project/:projectId" element={<ProjectPage />} />
-        <Route path="/project/:projectId/overview" element={<ProjectOverviewPage />} />
-        <Route path="/project/:projectId/new-entry" element={<NewEntryPage />} />
-        <Route path="/home" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Suspense>
-  );
-}
+    <div className="layout">
+      <header className="topbar">
+        <h1>Screwceus</h1>
+        <nav>
+          <Link to="/">Home</Link>
+          <Link to="/editor">Editor</Link>
+        </nav>
+      </header>
 
-function RouteLoadingFallback() {
-  return <div className="min-h-screen bg-[#efefef]" aria-busy="true" />;
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/editor" element={<EditorPage />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </main>
+    </div>
+  );
 }
 
 export default App;
