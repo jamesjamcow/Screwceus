@@ -1,10 +1,52 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Image as KonvaImage, Layer, Line, Stage } from "react-konva";
 import { useLocation, useParams } from "react-router-dom";
+import { z } from "zod";
 
 import HomeTopNav from "../components/home/HomeTopNav";
+import { formatProjectName } from "../lib/projectRouting";
 
 const FIELD_CLASS =
-  "h-10 w-full rounded-[4px] border border-[#6f6d6a] bg-[#efefef] px-3 text-[1.55rem] text-[#141414] focus:outline-none md:text-[1.12rem]";
+  "h-10 w-full rounded-[4px] border bg-[#efefef] px-3 text-[1.55rem] text-[#141414] focus:outline-none md:text-[1.12rem]";
+
+const entrySchema = z.object({
+  name: z.string().trim().min(2, "Enter at least 2 characters."),
+  type: z.enum(["M4", "M5", "M6"], {
+    error: "Choose a thread type.",
+  }),
+  sizing: z.enum(["Length 20mm", "Length 40mm", "Length 60mm"], {
+    error: "Choose a size.",
+  }),
+  quantity: z.enum(["10", "25", "50", "100"], {
+    error: "Choose a quantity.",
+  }),
+  part: z.enum(["threaded-rod", "washer", "locking-nut"], {
+    error: "Choose a part category.",
+  }),
+  label: z.enum(["inspected", "priority", "replace"], {
+    error: "Choose a label.",
+  }),
+});
+
+const FORM_DEFAULT_VALUES = {
+  name: "",
+  type: "",
+  sizing: "",
+  quantity: "",
+  part: "",
+  label: "",
+};
+
+const DRAW_STROKE = {
+  color: "#1e75c9",
+  width: 5,
+};
+
+const ERASER_STROKE = {
+  width: 26,
+};
 
 export default function NewEntryPage() {
   const { projectId } = useParams();
@@ -12,6 +54,21 @@ export default function NewEntryPage() {
 
   const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
   const uploadedFileName = location.state?.uploadedFileName;
+  const [submittedEntry, setSubmittedEntry] = useState(null);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(entrySchema),
+    defaultValues: FORM_DEFAULT_VALUES,
+  });
+
+  const handleValidSubmit = (values) => {
+    setSubmittedEntry(values);
+  };
 
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
@@ -35,67 +92,108 @@ export default function NewEntryPage() {
               {uploadedFileName ? `Uploaded: ${uploadedFileName}` : "No document selected"}
             </p>
 
-            <form className="mt-4 space-y-4 md:mt-6">
-              <Field label="Name">
-                <input type="text" name="name" className={FIELD_CLASS} />
+            <form className="mt-4 space-y-4 md:mt-6" onSubmit={handleSubmit(handleValidSubmit)} noValidate>
+              <Field label="Name" error={errors.name?.message}>
+                <input
+                  type="text"
+                  {...register("name")}
+                  aria-invalid={Boolean(errors.name)}
+                  className={fieldClassName(Boolean(errors.name))}
+                />
               </Field>
 
-              <Field label="Type">
-                <select name="type" defaultValue="" className={FIELD_CLASS}>
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  <option value="M4">M4</option>
-                  <option value="M5">M5</option>
-                  <option value="M6">M6</option>
-                </select>
-              </Field>
+              <SelectField
+                name="type"
+                label="Type"
+                control={control}
+                error={errors.type?.message}
+                options={[
+                  { value: "M4", label: "M4" },
+                  { value: "M5", label: "M5" },
+                  { value: "M6", label: "M6" },
+                ]}
+              />
 
-              <Field label="Sizing">
-                <select name="sizing" defaultValue="" className={FIELD_CLASS}>
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  <option value="Length 20mm">Length 20mm</option>
-                  <option value="Length 40mm">Length 40mm</option>
-                  <option value="Length 60mm">Length 60mm</option>
-                </select>
-              </Field>
+              <SelectField
+                name="sizing"
+                label="Sizing"
+                control={control}
+                error={errors.sizing?.message}
+                options={[
+                  { value: "Length 20mm", label: "Length 20mm" },
+                  { value: "Length 40mm", label: "Length 40mm" },
+                  { value: "Length 60mm", label: "Length 60mm" },
+                ]}
+              />
 
-              <Field label="Quantity">
-                <select name="quantity" defaultValue="" className={FIELD_CLASS}>
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </Field>
+              <SelectField
+                name="quantity"
+                label="Quantity"
+                control={control}
+                error={errors.quantity?.message}
+                options={[
+                  { value: "10", label: "10" },
+                  { value: "25", label: "25" },
+                  { value: "50", label: "50" },
+                  { value: "100", label: "100" },
+                ]}
+              />
 
-              <Field label="Part">
-                <select name="part" defaultValue="" className={FIELD_CLASS}>
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  <option value="threaded-rod">Threaded Rod</option>
-                  <option value="washer">Washer</option>
-                  <option value="locking-nut">Locking Nut</option>
-                </select>
-              </Field>
+              <SelectField
+                name="part"
+                label="Part"
+                control={control}
+                error={errors.part?.message}
+                options={[
+                  { value: "threaded-rod", label: "Threaded Rod" },
+                  { value: "washer", label: "Washer" },
+                  { value: "locking-nut", label: "Locking Nut" },
+                ]}
+              />
 
-              <Field label="Label">
-                <select name="label" defaultValue="" className={FIELD_CLASS}>
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  <option value="inspected">Inspected</option>
-                  <option value="priority">Priority</option>
-                  <option value="replace">Replace</option>
-                </select>
-              </Field>
+              <SelectField
+                name="label"
+                label="Label"
+                control={control}
+                error={errors.label?.message}
+                options={[
+                  { value: "inspected", label: "Inspected" },
+                  { value: "priority", label: "Priority" },
+                  { value: "replace", label: "Replace" },
+                ]}
+              />
+
+              <div className="flex items-center justify-between gap-4 pt-2">
+                <p className="text-sm text-[#54504a]">Validated with React Hook Form and zod.</p>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded border border-[#6f6d6a] bg-[#141414] px-4 py-2 text-sm text-[#efefef] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Save Entry
+                </button>
+              </div>
             </form>
+
+            {submittedEntry ? (
+              <section className="mt-5 rounded border border-[#c6c1b8] bg-[#e6e6e6] p-4 text-sm text-[#141414]">
+                <h2 className="font-semibold">Latest Saved Draft</h2>
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+                  <dt>Name</dt>
+                  <dd>{submittedEntry.name}</dd>
+                  <dt>Type</dt>
+                  <dd>{submittedEntry.type}</dd>
+                  <dt>Sizing</dt>
+                  <dd>{submittedEntry.sizing}</dd>
+                  <dt>Quantity</dt>
+                  <dd>{submittedEntry.quantity}</dd>
+                  <dt>Part</dt>
+                  <dd>{submittedEntry.part}</dd>
+                  <dt>Label</dt>
+                  <dd>{submittedEntry.label}</dd>
+                </dl>
+              </section>
+            ) : null}
           </article>
         </section>
       </main>
@@ -123,97 +221,75 @@ function CanvasToolbar() {
 }
 
 function SketchCanvas() {
-  const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const isDrawingRef = useRef(false);
   const [activeTool, setActiveTool] = useState("draw");
-  const [isDrawing, setIsDrawing] = useState(false);
-  const activeToolRef = useRef("draw");
+  const [lines, setLines] = useState([]);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const backgroundImage = useKonvaImage("/placeholder-document.svg");
 
   useEffect(() => {
-    activeToolRef.current = activeTool;
-  }, [activeTool]);
+    const container = containerRef.current;
+    if (!container) return undefined;
 
-  useEffect(() => {
-    const updateCanvasSize = () => {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (!canvas || !container) return;
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      const nextWidth = Math.round(entry.contentRect.width);
+      const nextHeight = Math.round(entry.contentRect.height);
 
-      const { width, height } = container.getBoundingClientRect();
-      if (!width || !height) return;
+      setStageSize((currentSize) => {
+        if (currentSize.width === nextWidth && currentSize.height === nextHeight) {
+          return currentSize;
+        }
 
-      const snapshot = document.createElement("canvas");
-      snapshot.width = canvas.width;
-      snapshot.height = canvas.height;
-      snapshot.getContext("2d")?.drawImage(canvas, 0, 0);
+        return { width: nextWidth, height: nextHeight };
+      });
+    });
 
-      canvas.width = width;
-      canvas.height = height;
-
-      const context = canvas.getContext("2d");
-      if (!context) return;
-
-      context.lineCap = "round";
-      context.lineJoin = "round";
-      context.drawImage(snapshot, 0, 0, width, height);
-    };
-
-    updateCanvasSize();
-    window.addEventListener("resize", updateCanvasSize);
-    return () => window.removeEventListener("resize", updateCanvasSize);
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
   }, []);
 
-  const resolvePoint = (event) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const bounds = canvas.getBoundingClientRect();
-    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-  };
-
   const handlePointerDown = (event) => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    const point = resolvePoint(event);
-    if (!canvas || !context || !point) return;
+    const stage = event.target.getStage();
+    const point = stage?.getPointerPosition();
+    if (!point) return;
 
-    setIsDrawing(true);
-    canvas.setPointerCapture(event.pointerId);
-    context.beginPath();
-    context.moveTo(point.x, point.y);
+    isDrawingRef.current = true;
+    setLines((currentLines) => [
+      ...currentLines,
+      {
+        tool: activeTool,
+        points: [point.x, point.y],
+      },
+    ]);
   };
 
   const handlePointerMove = (event) => {
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
 
-    const context = canvasRef.current?.getContext("2d");
-    const point = resolvePoint(event);
-    if (!context || !point) return;
+    const stage = event.target.getStage();
+    const point = stage?.getPointerPosition();
+    if (!point) return;
 
-    if (activeToolRef.current === "erase") {
-      context.globalCompositeOperation = "destination-out";
-      context.lineWidth = 28;
-    } else {
-      context.globalCompositeOperation = "source-over";
-      context.strokeStyle = "#1e75c9";
-      context.lineWidth = 5;
-    }
+    setLines((currentLines) => {
+      if (currentLines.length === 0) return currentLines;
 
-    context.lineTo(point.x, point.y);
-    context.stroke();
+      const nextLines = currentLines.slice();
+      const lastLine = nextLines.at(-1);
+      nextLines[nextLines.length - 1] = {
+        ...lastLine,
+        points: [...lastLine.points, point.x, point.y],
+      };
+      return nextLines;
+    });
   };
 
-  const endStroke = () => {
-    if (!isDrawing) return;
-    const context = canvasRef.current?.getContext("2d");
-    context?.closePath();
-    setIsDrawing(false);
+  const handlePointerUp = () => {
+    isDrawingRef.current = false;
   };
 
   const clearSketch = () => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    setLines([]);
   };
 
   return (
@@ -232,26 +308,81 @@ function SketchCanvas() {
         >
           Clear
         </button>
+        <span className="ml-auto text-sm text-[#54504a]">{lines.length} annotation{lines.length === 1 ? "" : "s"}</span>
       </div>
 
-      <div ref={containerRef} className="relative h-[360px] w-full overflow-hidden border border-[#948c7f] bg-[#b2bcc1] md:h-[520px]">
-        <img
-          src="/placeholder-document.svg"
-          alt="Placeholder document preview"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <canvas
-          ref={canvasRef}
-          className={`absolute inset-0 h-full w-full touch-none ${
-            activeTool === "erase" ? "cursor-cell" : "cursor-crosshair"
-          }`}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={endStroke}
-          onPointerLeave={endStroke}
-        />
+      <div
+        ref={containerRef}
+        className={`relative h-[360px] w-full overflow-hidden border border-[#948c7f] bg-[#b2bcc1] md:h-[520px] ${
+          activeTool === "erase" ? "cursor-cell" : "cursor-crosshair"
+        }`}
+      >
+        {stageSize.width > 0 && stageSize.height > 0 ? (
+          <Stage
+            width={stageSize.width}
+            height={stageSize.height}
+            className="touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          >
+            <Layer listening={false}>
+              {backgroundImage ? (
+                <KonvaImage
+                  image={backgroundImage}
+                  x={0}
+                  y={0}
+                  width={stageSize.width}
+                  height={stageSize.height}
+                />
+              ) : null}
+            </Layer>
+            <Layer>
+              {lines.map((line, index) => (
+                <Line
+                  key={`${line.tool}-${index}`}
+                  points={line.points}
+                  stroke={line.tool === "erase" ? "#000" : DRAW_STROKE.color}
+                  strokeWidth={line.tool === "erase" ? ERASER_STROKE.width : DRAW_STROKE.width}
+                  lineCap="round"
+                  lineJoin="round"
+                  globalCompositeOperation={line.tool === "erase" ? "destination-out" : "source-over"}
+                  tension={0.15}
+                />
+              ))}
+            </Layer>
+          </Stage>
+        ) : null}
       </div>
     </div>
+  );
+}
+
+function SelectField({ name, label, control, error, options }) {
+  return (
+    <Field label={label} error={error}>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <select
+            {...field}
+            aria-invalid={Boolean(error)}
+            className={fieldClassName(Boolean(error))}
+          >
+            <option value="" disabled>
+              Select
+            </option>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
+      />
+    </Field>
   );
 }
 
@@ -271,23 +402,30 @@ function ToolButton({ active, onClick, children }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, error, children }) {
   return (
     <label className="block">
       <span className="mb-1 block text-[2rem] leading-none md:text-[1.35rem]">{label}</span>
       {children}
+      <span className="mt-1 block min-h-5 text-sm text-[#9d3434]">{error ?? ""}</span>
     </label>
   );
 }
 
-function formatProjectName(projectId) {
-  if (!projectId) return "Untitled";
+function fieldClassName(hasError) {
+  return `${FIELD_CLASS} ${hasError ? "border-[#9d3434]" : "border-[#6f6d6a]"}`;
+}
 
-  return decodeURIComponent(projectId)
-    .trim()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+function useKonvaImage(src) {
+  const [image, setImage] = useState(null);
+
+  useEffect(() => {
+    const nextImage = new window.Image();
+    nextImage.src = src;
+    nextImage.onload = () => setImage(nextImage);
+  }, [src]);
+
+  return image;
 }
 
 function PenIcon({ className = "" }) {
