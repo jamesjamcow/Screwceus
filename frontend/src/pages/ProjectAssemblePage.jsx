@@ -3,31 +3,24 @@ import { useParams } from "react-router-dom";
 import { Float, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 
+import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
+import { PART_FIELDS, createPartRecords, formatPartValue } from "../lib/partSchema";
 import { formatProjectName } from "../lib/projectRouting";
-
-const INVENTORY_SUMMARY = [
-  { label: "Type", value: "M4" },
-  { label: "Quantity", value: "100 - 50 = 50" },
-  { label: "Sizing", value: "Length: 40mm" },
-  { label: "Amount Used", value: "50" },
-];
-
-const SELECTED_PART = {
-  index: 1,
-  name: "Screw",
-  type: "M4",
-  sizing: "Length: 40mm",
-  quantity: 50,
-  status: "In stock",
-  part: "Body",
-  label: "Assembly 1",
-};
 
 export default function ProjectAssemblePage() {
   const { projectId } = useParams();
   const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
+  const selectedPart = useMemo(() => createPartRecords()[0], []);
+  const inventorySummary = useMemo(
+    () =>
+      PART_FIELDS.map((field) => ({
+        label: field.label,
+        value: formatPartValue(field.name, selectedPart[field.name]),
+      })),
+    [selectedPart],
+  );
 
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
@@ -79,16 +72,16 @@ export default function ProjectAssemblePage() {
                 React Three Fiber viewport for the active assembly. Swap `AssemblyRig` for your loaded project model when ready.
               </div>
               <div className="shrink-0 rounded-full border border-[#d6cfbf] bg-[#f3efe6] px-3 py-1 text-[#332f28]">
-                Part #{SELECTED_PART.index}
+                Part #{selectedPart.id}
               </div>
             </div>
           </article>
 
           <aside className="flex flex-col gap-5">
             <section className="rounded-[8px] border border-[#d5cec2] bg-[#faf8f3] px-4 py-4 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-              <h2 className="text-[1.8rem] font-medium leading-none md:text-[1.55rem]">Inventory</h2>
+              <h2 className="text-[1.8rem] font-medium leading-none md:text-[1.55rem]">Part Schema</h2>
               <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 text-[1rem] md:grid-cols-2 xl:grid-cols-4 xl:gap-x-4 xl:text-[0.94rem]">
-                {INVENTORY_SUMMARY.map((item) => (
+                {inventorySummary.map((item) => (
                   <div key={item.label}>
                     <p className="text-[#5f584d]">{item.label}</p>
                     <p className="mt-1 font-medium text-[#141414]">{item.value}</p>
@@ -97,38 +90,12 @@ export default function ProjectAssemblePage() {
               </div>
             </section>
 
-            <section className="rounded-[8px] border border-[#bdb6a8] bg-[#f5f4f0] px-5 py-4 shadow-[0_1px_0_rgba(0,0,0,0.06)]">
-              <div className="flex items-start justify-between gap-4">
-                <MiniPartCardPreview />
-                <span className="text-[1rem] md:text-[0.95rem]">{SELECTED_PART.index}</span>
-              </div>
-
-              <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[1.05rem] md:text-[0.95rem]">
-                <dt className="text-[#504a40]">Name:</dt>
-                <dd>{SELECTED_PART.name}</dd>
-                <dt className="text-[#504a40]">Type</dt>
-                <dd>{SELECTED_PART.type}</dd>
-                <dt className="text-[#504a40]">Sizing</dt>
-                <dd>{SELECTED_PART.sizing}</dd>
-                <dt className="text-[#504a40]">Quantity</dt>
-                <dd>{SELECTED_PART.quantity}</dd>
-              </dl>
-
-              <div className="mt-6 grid grid-cols-3 gap-4 border-t border-[#ddd5c7] pt-4 text-[1.05rem] md:text-[0.95rem]">
-                <div>
-                  <p className="text-[#504a40]">Status</p>
-                  <p className="mt-1">{SELECTED_PART.status}</p>
-                </div>
-                <div>
-                  <p className="text-[#504a40]">Part</p>
-                  <p className="mt-1">{SELECTED_PART.part}</p>
-                </div>
-                <div>
-                  <p className="text-[#504a40]">Label</p>
-                  <p className="mt-1">{SELECTED_PART.label}</p>
-                </div>
-              </div>
-            </section>
+            <PartCard
+              part={selectedPart}
+              badge={`#${selectedPart.id}`}
+              preview={<MiniPartCardPreview />}
+              className="rounded-[8px] border-[#bdb6a8] bg-[#f5f4f0]"
+            />
           </aside>
         </section>
 
@@ -252,13 +219,11 @@ function AssemblyRig() {
 
 function MiniPartCardPreview() {
   return (
-    <div className="flex h-[168px] w-[168px] items-center justify-center rounded-[6px] border border-[#dde4ea] bg-[#eef3f6]">
-      <svg viewBox="0 0 180 180" aria-hidden="true" className="h-[150px] w-[150px] text-[#8db7d8]">
-        <path d="M38 26 131 51v92l-93-25Z" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path d="m131 51 15-18v92l-15 18m-93-117 15-18 93 25" fill="none" stroke="#f2a34a" strokeWidth="1.4" />
-        <path d="M38 89 131 114m-78-92v92" fill="none" stroke="currentColor" strokeWidth="1.1" opacity="0.88" />
-        <circle cx="92" cy="89" r="2.5" fill="#202020" />
-      </svg>
-    </div>
+    <svg viewBox="0 0 180 180" aria-hidden="true" className="h-[76px] w-[76px] text-[#8db7d8]">
+      <path d="M38 26 131 51v92l-93-25Z" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="m131 51 15-18v92l-15 18m-93-117 15-18 93 25" fill="none" stroke="#f2a34a" strokeWidth="1.4" />
+      <path d="M38 89 131 114m-78-92v92" fill="none" stroke="currentColor" strokeWidth="1.1" opacity="0.88" />
+      <circle cx="92" cy="89" r="2.5" fill="#202020" />
+    </svg>
   );
 }

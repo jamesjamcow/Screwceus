@@ -3,41 +3,14 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Image as KonvaImage, Layer, Line, Stage } from "react-konva";
 import { useLocation, useParams } from "react-router-dom";
-import { z } from "zod";
 
+import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
+import { PART_FIELDS, PART_FORM_DEFAULT_VALUES, partFormSchema } from "../lib/partSchema";
 import { formatProjectName } from "../lib/projectRouting";
 
 const FIELD_CLASS =
   "h-10 w-full rounded-[4px] border bg-[#efefef] px-3 text-[1.55rem] text-[#141414] focus:outline-none md:text-[1.12rem]";
-
-const entrySchema = z.object({
-  name: z.string().trim().min(2, "Enter at least 2 characters."),
-  type: z.enum(["M4", "M5", "M6"], {
-    error: "Choose a thread type.",
-  }),
-  sizing: z.enum(["Length 20mm", "Length 40mm", "Length 60mm"], {
-    error: "Choose a size.",
-  }),
-  quantity: z.enum(["10", "25", "50", "100"], {
-    error: "Choose a quantity.",
-  }),
-  part: z.enum(["threaded-rod", "washer", "locking-nut"], {
-    error: "Choose a part category.",
-  }),
-  label: z.enum(["inspected", "priority", "replace"], {
-    error: "Choose a label.",
-  }),
-});
-
-const FORM_DEFAULT_VALUES = {
-  name: "",
-  type: "",
-  sizing: "",
-  quantity: "",
-  part: "",
-  label: "",
-};
 
 const DRAW_STROKE = {
   color: "#1e75c9",
@@ -62,8 +35,8 @@ export default function NewEntryPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: zodResolver(entrySchema),
-    defaultValues: FORM_DEFAULT_VALUES,
+    resolver: zodResolver(partFormSchema),
+    defaultValues: PART_FORM_DEFAULT_VALUES,
   });
 
   const handleValidSubmit = (values) => {
@@ -93,78 +66,52 @@ export default function NewEntryPage() {
             </p>
 
             <form className="mt-4 space-y-4 md:mt-6" onSubmit={handleSubmit(handleValidSubmit)} noValidate>
-              <Field label="Name" error={errors.name?.message}>
-                <input
-                  type="text"
-                  {...register("name")}
-                  aria-invalid={Boolean(errors.name)}
-                  className={fieldClassName(Boolean(errors.name))}
-                />
-              </Field>
+              {PART_FIELDS.map((field) => {
+                const error = errors[field.name]?.message;
 
-              <SelectField
-                name="type"
-                label="Type"
-                control={control}
-                error={errors.type?.message}
-                options={[
-                  { value: "M4", label: "M4" },
-                  { value: "M5", label: "M5" },
-                  { value: "M6", label: "M6" },
-                ]}
-              />
+                if (field.input === "select") {
+                  return (
+                    <SelectField
+                      key={field.name}
+                      name={field.name}
+                      label={field.label}
+                      control={control}
+                      error={error}
+                      options={field.options}
+                    />
+                  );
+                }
 
-              <SelectField
-                name="sizing"
-                label="Sizing"
-                control={control}
-                error={errors.sizing?.message}
-                options={[
-                  { value: "Length 20mm", label: "Length 20mm" },
-                  { value: "Length 40mm", label: "Length 40mm" },
-                  { value: "Length 60mm", label: "Length 60mm" },
-                ]}
-              />
+                if (field.input === "json" || field.input === "textarea") {
+                  return (
+                    <Field key={field.name} label={field.label} error={error}>
+                      <textarea
+                        {...register(field.name)}
+                        rows={field.input === "json" ? 6 : 4}
+                        placeholder={field.placeholder}
+                        spellCheck={field.input !== "json"}
+                        aria-invalid={Boolean(error)}
+                        className={textAreaClassName(Boolean(error), field.input === "json")}
+                      />
+                    </Field>
+                  );
+                }
 
-              <SelectField
-                name="quantity"
-                label="Quantity"
-                control={control}
-                error={errors.quantity?.message}
-                options={[
-                  { value: "10", label: "10" },
-                  { value: "25", label: "25" },
-                  { value: "50", label: "50" },
-                  { value: "100", label: "100" },
-                ]}
-              />
-
-              <SelectField
-                name="part"
-                label="Part"
-                control={control}
-                error={errors.part?.message}
-                options={[
-                  { value: "threaded-rod", label: "Threaded Rod" },
-                  { value: "washer", label: "Washer" },
-                  { value: "locking-nut", label: "Locking Nut" },
-                ]}
-              />
-
-              <SelectField
-                name="label"
-                label="Label"
-                control={control}
-                error={errors.label?.message}
-                options={[
-                  { value: "inspected", label: "Inspected" },
-                  { value: "priority", label: "Priority" },
-                  { value: "replace", label: "Replace" },
-                ]}
-              />
+                return (
+                  <Field key={field.name} label={field.label} error={error}>
+                    <input
+                      type="text"
+                      {...register(field.name)}
+                      placeholder={field.placeholder}
+                      aria-invalid={Boolean(error)}
+                      className={fieldClassName(Boolean(error))}
+                    />
+                  </Field>
+                );
+              })}
 
               <div className="flex items-center justify-between gap-4 pt-2">
-                <p className="text-sm text-[#54504a]">Validated with React Hook Form and zod.</p>
+                <p className="text-sm text-[#54504a]">Validated against the shared part schema.</p>
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -176,22 +123,9 @@ export default function NewEntryPage() {
             </form>
 
             {submittedEntry ? (
-              <section className="mt-5 rounded border border-[#c6c1b8] bg-[#e6e6e6] p-4 text-sm text-[#141414]">
+              <section className="mt-5">
                 <h2 className="font-semibold">Latest Saved Draft</h2>
-                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-                  <dt>Name</dt>
-                  <dd>{submittedEntry.name}</dd>
-                  <dt>Type</dt>
-                  <dd>{submittedEntry.type}</dd>
-                  <dt>Sizing</dt>
-                  <dd>{submittedEntry.sizing}</dd>
-                  <dt>Quantity</dt>
-                  <dd>{submittedEntry.quantity}</dd>
-                  <dt>Part</dt>
-                  <dd>{submittedEntry.part}</dd>
-                  <dt>Label</dt>
-                  <dd>{submittedEntry.label}</dd>
-                </dl>
+                <PartCard part={submittedEntry} className="mt-2 border-[#c6c1b8] bg-[#e6e6e6]" />
               </section>
             ) : null}
           </article>
@@ -414,6 +348,12 @@ function Field({ label, error, children }) {
 
 function fieldClassName(hasError) {
   return `${FIELD_CLASS} ${hasError ? "border-[#9d3434]" : "border-[#6f6d6a]"}`;
+}
+
+function textAreaClassName(hasError, useMonoFont = false) {
+  return `w-full rounded-[4px] border bg-[#efefef] px-3 py-2 text-[1.2rem] text-[#141414] focus:outline-none md:text-[1rem] ${
+    useMonoFont ? "font-mono" : ""
+  } ${hasError ? "border-[#9d3434]" : "border-[#6f6d6a]"}`;
 }
 
 function useKonvaImage(src) {

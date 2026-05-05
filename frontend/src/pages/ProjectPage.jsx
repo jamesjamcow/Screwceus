@@ -1,15 +1,11 @@
 import { useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
+import { createPartRecords } from "../lib/partSchema";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
 import { formatProjectName, toPathSafeProjectId } from "../lib/projectRouting";
-
-const PART_ROWS = [
-  { id: 1, name: "Screw", type: "M4", sizing: "Length: 40mm", quantity: 50, status: "IN stock" },
-  { id: 2, name: "Screw", type: "M4", sizing: "Length: 40mm", quantity: 50, status: "IN stock" },
-  { id: 3, name: "Screw", type: "M4", sizing: "Length: 40mm", quantity: 50, status: "IN stock" },
-];
 
 export default function ProjectPage() {
   const { projectId } = useParams();
@@ -18,6 +14,7 @@ export default function ProjectPage() {
 
   const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
   const targetProjectId = useMemo(() => toPathSafeProjectId(projectId), [projectId]);
+  const parts = useMemo(() => createPartRecords(), []);
 
   const handleStartEntry = () => {
     navigate(`/project/${targetProjectId}/new-entry`);
@@ -99,26 +96,8 @@ export default function ProjectPage() {
           </div>
 
           <div className="mt-6 space-y-3">
-            {PART_ROWS.map((part) => (
-              <article
-                key={part.id}
-                className="relative rounded-lg border border-[#b8b0a5] bg-[#efefef] px-4 py-5 text-[1.35rem] md:px-6 md:py-6"
-              >
-                <div className="absolute right-5 top-2 text-[1.5rem]">{part.id}</div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-[1.1fr_1fr_1.45fr_1fr_1.2fr] md:items-center">
-                  <p>
-                    Name: <span className="ml-2">{part.name}</span>
-                  </p>
-                  <p>
-                    Type <span className="ml-2">{part.type}</span>
-                  </p>
-                  <p>Sizing {part.sizing}</p>
-                  <p>Quantity {part.quantity}</p>
-                  <p>
-                    Status <span className="ml-2">{part.status}</span>
-                  </p>
-                </div>
-              </article>
+            {parts.map((part) => (
+              <PartCard key={part.id} part={part} badge={`#${part.id}`} />
             ))}
           </div>
         </section>

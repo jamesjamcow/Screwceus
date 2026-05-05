@@ -3,27 +3,30 @@ import { useParams } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Sphere } from "@react-three/drei";
 
+import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
+import { createPartRecords } from "../lib/partSchema";
 import { formatProjectName } from "../lib/projectRouting";
 
 const MODEL_FILE_PLACEHOLDER = "src/assets/models/project-model.glb";
 
-const PART_ROWS = [
-  { id: 1, name: "Screw", type: "M4", sizing: "Length: 40mm", quantity: 50, status: "IN stock", part: "Body", label: "Assembly 1" },
-  { id: 2, name: "Spacer", type: "Nylon", sizing: "Outer: 8mm", quantity: 30, status: "IN stock", part: "Rail", label: "Assembly 1" },
-  { id: 3, name: "Washer", type: "M4", sizing: "Inner: 4.3mm", quantity: 120, status: "IN stock", part: "Body", label: "Assembly 2" },
-  { id: 4, name: "Nut", type: "M4", sizing: "Hex", quantity: 65, status: "Low stock", part: "Mount", label: "Assembly 2" },
-  { id: 5, name: "Bearing", type: "625ZZ", sizing: "5x16x5", quantity: 10, status: "IN stock", part: "Slider", label: "Assembly 3" },
-  { id: 6, name: "Bracket", type: "Aluminum", sizing: "120x35mm", quantity: 12, status: "IN stock", part: "Base", label: "Assembly 3" },
-  { id: 7, name: "Wire Set", type: "18AWG", sizing: "Length: 1m", quantity: 8, status: "Low stock", part: "Control", label: "Assembly 4" },
-  { id: 8, name: "Connector", type: "JST-XH", sizing: "4 pin", quantity: 40, status: "IN stock", part: "Control", label: "Assembly 4" },
-];
-
 export default function ProjectOverviewPage() {
   const { projectId } = useParams();
   const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
-  const [parts, setParts] = useState(() => PART_ROWS);
+  const [parts, setParts] = useState(() =>
+    createPartRecords().map((part, index) => ({
+      ...part,
+      point:
+        index < 2
+          ? [
+              Number((0.35 + index * 0.45).toFixed(3)),
+              Number((0.4 - index * 0.18).toFixed(3)),
+              Number((0.12 + index * 0.1).toFixed(3)),
+            ]
+          : undefined,
+    })),
+  );
   const [selectedPartId, setSelectedPartId] = useState(null);
   const modelClickRef = useRef(false);
 
@@ -137,11 +140,14 @@ export default function ProjectOverviewPage() {
         <section className="mt-7">
           <div className="max-h-[300px] space-y-3 overflow-y-auto pr-1 md:max-h-[340px]">
             {parts.map((part) => (
-              <article
+              <PartCard
                 key={part.id}
+                part={part}
                 data-part-card="true"
-                role="button"
-                tabIndex={0}
+                badge={`#${part.id}`}
+                preview={<PartPreviewIcon className="h-[54px] w-[54px] text-[#8ca7b8]" />}
+                footer={<span>Point: {part.point ? formatPoint(part.point) : "Not set"}</span>}
+                selected={selectedPartId === part.id}
                 onClick={() => handlePartSelect(part.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -149,35 +155,8 @@ export default function ProjectOverviewPage() {
                     handlePartSelect(part.id);
                   }
                 }}
-                className={`relative rounded-lg border px-3 py-3 text-[1.2rem] shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors md:px-6 md:py-4 md:text-[1rem] ${
-                  selectedPartId === part.id
-                    ? "border-[#c84545] bg-[#f7e3e3] ring-1 ring-[#c84545]"
-                    : "border-[#b8b0a5] bg-[#efefef] hover:bg-[#e8e5df]"
-                }`}
-              >
-                <div className="absolute right-4 top-2 text-[1.2rem] md:text-[1rem]">{part.id}</div>
-
-                <div className="grid grid-cols-[90px_1fr] gap-3 md:grid-cols-[120px_1.35fr_0.8fr_1fr_0.8fr_0.85fr_0.9fr] md:items-center md:gap-4">
-                  <div className="flex h-[70px] w-[90px] items-center justify-center rounded bg-[#e7e6e2] md:h-[84px] md:w-[108px]">
-                    <PartPreviewIcon className="h-[54px] w-[54px] text-[#8ca7b8]" />
-                  </div>
-                  <p>
-                    Name: <span className="ml-1">{part.name}</span>
-                  </p>
-                  <p>
-                    Type <span className="ml-1">{part.type}</span>
-                  </p>
-                  <p>Sizing {part.sizing}</p>
-                  <p>Quantity {part.quantity}</p>
-                  <p>Status {part.status}</p>
-                  <p>
-                    Part {part.part} <span className="ml-2">Label {part.label}</span>
-                  </p>
-                </div>
-                <p className="mt-3 text-[0.82rem] text-[#5d5d5d]">
-                  Point: {part.point ? formatPoint(part.point) : "Not set"}
-                </p>
-              </article>
+                className="md:px-6 md:py-4"
+              />
             ))}
           </div>
         </section>
