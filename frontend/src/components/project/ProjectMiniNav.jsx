@@ -6,7 +6,7 @@ const NAV_ITEMS = [
   { id: "design", label: "Design", Icon: DesignIcon },
   { id: "overview", label: "Overview", Icon: OverviewIcon },
   { id: "assemble", label: "Assemble", Icon: AssembleIcon },
-  { id: "issue-logs", label: "Issue Logs", Icon: IssueLogsIcon },
+  { id: "issue-log", label: "Issue Log", Icon: IssueLogsIcon },
 ];
 
 export default function ProjectMiniNav({ active = "overview", projectId }) {
@@ -50,6 +50,12 @@ function resolveTabHref(tabId, projectId) {
   }
   if (tabId === "overview") {
     return `/project/${projectId}/overview`;
+  }
+  if (tabId === "assemble") {
+    return `/project/${projectId}/assemble`;
+  }
+  if (tabId === "issue-log") {
+    return `/project/${projectId}/issue-log`;
   }
   return null;
 }
