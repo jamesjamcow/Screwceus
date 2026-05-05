@@ -6,6 +6,8 @@ import NotFoundPage from "./pages/NotFoundPage";
 
 const NewEntryPage = lazy(() => import("./pages/NewEntryPage"));
 const ProjectPage = lazy(() => import("./pages/ProjectPage"));
+const ProjectAssemblePage = lazy(() => import("./pages/ProjectAssemblePage"));
+const ProjectIssueLogPage = lazy(() => import("./pages/ProjectIssueLogPage"));
 const ProjectOverviewPage = lazy(() => import("./pages/ProjectOverviewPage"));
 
 function App() {
@@ -15,6 +17,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/project/:projectId" element={<ProjectPage />} />
         <Route path="/project/:projectId/overview" element={<ProjectOverviewPage />} />
+        <Route path="/project/:projectId/assemble" element={<ProjectAssemblePage />} />
+        <Route path="/project/:projectId/issue-log" element={<ProjectIssueLogPage />} />
         <Route path="/project/:projectId/new-entry" element={<NewEntryPage />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />
