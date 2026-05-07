@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("owner_id", sa.String(length=255), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("image_key", sa.String(length=512), nullable=False),
+        sa.Column("image_url", sa.String(length=1024), nullable=False),
         sa.Column("annotation_json", sa.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["owner_id"], ["user.clerk_id"], name="fk_photo_owner_id_user"),

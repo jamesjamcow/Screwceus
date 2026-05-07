@@ -27,7 +27,7 @@ def create_photo(
     photo = Photo(
         owner_id=user_id,
         title=payload.title,
-        image_key=payload.image_key,
+        image_url=payload.image_url,
         annotation_json=payload.annotation_json,
     )
     session.add(photo)
