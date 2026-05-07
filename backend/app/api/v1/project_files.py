@@ -7,6 +7,7 @@ from app.core.security import get_current_user_id
 from app.db.session import get_session
 from app.models.folder import Folder
 from app.models.part import Part
+from app.models.photo import Photo
 from app.models.project_file import ProjectFile
 from app.models.project_part import ProjectPart
 from app.models.project_screenshot import ProjectScreenshot
@@ -159,10 +160,15 @@ def add_screenshot(
     session: Session = Depends(get_session),
 ) -> ProjectScreenshot:
     _require_project(project_id, user_id, session)
+
+    photo = session.get(Photo, payload.photo_id)
+    if not photo or photo.owner_id != user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
+
     screenshot = ProjectScreenshot(
         project_file_id=project_id,
+        photo_id=payload.photo_id,
         owner_id=user_id,
-        image_key=payload.image_key,
         caption=payload.caption,
         sort_order=payload.sort_order,
     )

@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("owner_id", sa.String(length=255), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("image_key", sa.String(length=512), nullable=False),
+        sa.Column("image_url", sa.String(length=1024), nullable=False),
         sa.Column("annotation_json", sa.JSON(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["owner_id"], ["user.clerk_id"], name="fk_photo_owner_id_user"),
@@ -66,7 +66,6 @@ def upgrade() -> None:
         "part",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("owner_id", sa.String(length=255), nullable=False),
-        sa.Column("folder_id", sa.Integer(), nullable=True),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("type", sa.String(length=100), nullable=False),
         sa.Column("dimensions", sa.JSON(), nullable=False),
@@ -74,11 +73,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["owner_id"], ["user.clerk_id"], name="fk_part_owner_id_user"),
-        sa.ForeignKeyConstraint(["folder_id"], ["folder.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_part_owner_id"), "part", ["owner_id"])
-    op.create_index(op.f("ix_part_folder_id"), "part", ["folder_id"])
 
     # -- custom_part_type --
     op.create_table(
@@ -116,16 +113,18 @@ def upgrade() -> None:
         "project_screenshot",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("project_file_id", sa.Integer(), nullable=False),
+        sa.Column("photo_id", sa.Integer(), nullable=False),
         sa.Column("owner_id", sa.String(length=255), nullable=False),
-        sa.Column("image_key", sa.String(length=512), nullable=False),
         sa.Column("caption", sa.String(length=500), nullable=False, server_default=""),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["owner_id"], ["user.clerk_id"], name="fk_project_screenshot_owner_id_user"),
         sa.ForeignKeyConstraint(["project_file_id"], ["project_file.id"]),
+        sa.ForeignKeyConstraint(["photo_id"], ["photo.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_project_screenshot_project_file_id"), "project_screenshot", ["project_file_id"])
+    op.create_index(op.f("ix_project_screenshot_photo_id"), "project_screenshot", ["photo_id"])
     op.create_index(op.f("ix_project_screenshot_owner_id"), "project_screenshot", ["owner_id"])
 
     # -- project_part --

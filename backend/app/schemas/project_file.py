@@ -26,7 +26,7 @@ class ProjectFileRead(BaseModel):
 
 
 class ProjectScreenshotCreate(BaseModel):
-    image_key: str = Field(min_length=1, max_length=512)
+    photo_id: int
     caption: str = Field(default="", max_length=500)
     sort_order: int = 0
 
@@ -34,8 +34,8 @@ class ProjectScreenshotCreate(BaseModel):
 class ProjectScreenshotRead(BaseModel):
     id: int
     project_file_id: int
+    photo_id: int
     owner_id: str
-    image_key: str
     caption: str
     sort_order: int
     created_at: datetime
