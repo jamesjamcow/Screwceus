@@ -126,15 +126,6 @@ def delete_folder(
         ).all()
         queue.extend(child.id for child in children)
 
-    # Nullify folder_id on parts in these folders
-    from app.models.part import Part
-    parts = session.exec(
-        select(Part).where(Part.folder_id.in_(ids_to_delete), Part.owner_id == user_id)
-    ).all()
-    for part in parts:
-        part.folder_id = None
-        session.add(part)
-
     # Delete folders deepest-first
     for fid in reversed(ids_to_delete):
         f = session.get(Folder, fid)

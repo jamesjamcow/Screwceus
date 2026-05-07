@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 
 class PartCreate(BaseModel):
-    folder_id: int | None = None
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=100)
     dimensions: dict
@@ -12,7 +11,6 @@ class PartCreate(BaseModel):
 
 
 class PartUpdate(BaseModel):
-    folder_id: int | None = None
     name: str | None = Field(default=None, min_length=1, max_length=255)
     type: str | None = Field(default=None, min_length=1, max_length=100)
     dimensions: dict | None = None
@@ -22,7 +20,6 @@ class PartUpdate(BaseModel):
 class PartRead(BaseModel):
     id: int
     owner_id: str
-    folder_id: int | None
     name: str
     type: str
     dimensions: dict
