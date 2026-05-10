@@ -18,17 +18,17 @@ const queryClient = new QueryClient({
 });
 
 if (!clerkPubKey) {
-  console.warn("Missing VITE_CLERK_PUBLISHABLE_KEY. Auth UI will not work until it is set.");
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY.");
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ClerkProviderWithRouter publishableKey={clerkPubKey || ""}>
+    <BrowserRouter>
+      <ClerkProviderWithRouter publishableKey={clerkPubKey}>
+        <QueryClientProvider client={queryClient}>
           <App />
-        </ClerkProviderWithRouter>
-      </BrowserRouter>
-    </QueryClientProvider>
+        </QueryClientProvider>
+      </ClerkProviderWithRouter>
+    </BrowserRouter>
   </React.StrictMode>
 );

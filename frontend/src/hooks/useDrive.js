@@ -1,57 +1,44 @@
-import { useAuth } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "../lib/api";
-
-function getProjectParams(folderId) {
-  return folderId ? { folder_id: folderId } : { root_only: true };
-}
-
-function getFolderParams(folderId) {
-  return folderId ? { parent_id: folderId } : {};
-}
+import { useAuthedApi } from "./useAuthedApi";
+import {
+  createFolder,
+  createProjectFile,
+  listFolders,
+  listFolderTree,
+  listProjectFiles,
+} from "../services/driveService";
 
 function getErrorMessage(error, fallback) {
   return error?.response?.data?.detail || fallback;
 }
 
 export function useDriveContents(folderId) {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { authedFetch, isAuthReady } = useAuthedApi();
 
   return useQuery({
     queryKey: ["driveContents", folderId ?? "root"],
-    enabled: isLoaded && isSignedIn,
+    enabled: isAuthReady,
     staleTime: 30_000,
-    queryFn: async () => {
-      const token = await getToken();
-      const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    queryFn: () =>
+      authedFetch(async (token) => {
+        const [folders, projects, folderTree] = await Promise.all([
+          listFolders(token, { parentId: folderId }),
+          listProjectFiles(token, { folderId }),
+          listFolderTree(token),
+        ]);
 
-      const [foldersResponse, projectsResponse, treeResponse] = await Promise.all([
-        api.get("/v1/folders/", { ...authConfig, params: getFolderParams(folderId) }),
-        api.get("/v1/projects/", { ...authConfig, params: getProjectParams(folderId) }),
-        api.get("/v1/folders/tree", authConfig),
-      ]);
-
-      return {
-        folders: foldersResponse.data,
-        projects: projectsResponse.data,
-        folderTree: treeResponse.data,
-      };
-    },
+        return { folders, projects, folderTree };
+      }),
   });
 }
 
 export function useCreateFolder() {
-  const { getToken } = useAuth();
+  const { authedFetch } = useAuthedApi();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ name, parentId }) => {
-      const token = await getToken();
-      const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      const response = await api.post("/v1/folders/", { name, parent_id: parentId ?? null }, authConfig);
-      return response.data;
-    },
+    mutationFn: (payload) => authedFetch((token) => createFolder(token, payload)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["driveContents"] });
     },
@@ -59,20 +46,11 @@ export function useCreateFolder() {
 }
 
 export function useCreateProject() {
-  const { getToken } = useAuth();
+  const { authedFetch } = useAuthedApi();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ name, folderId }) => {
-      const token = await getToken();
-      const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      const response = await api.post(
-        "/v1/projects/",
-        { name, folder_id: folderId ?? null, description: "" },
-        authConfig,
-      );
-      return response.data;
-    },
+    mutationFn: (payload) => authedFetch((token) => createProjectFile(token, payload)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["driveContents"] });
     },
