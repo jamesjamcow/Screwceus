@@ -1,7 +1,9 @@
 import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const NewEntryPage = lazy(() => import("./pages/NewEntryPage"));
@@ -14,14 +16,65 @@ function App() {
   return (
     <Suspense fallback={<RouteLoadingFallback />}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/project/:projectId" element={<ProjectPage />} />
-        <Route path="/project/:projectId/overview" element={<ProjectOverviewPage />} />
-        <Route path="/project/:projectId/assemble" element={<ProjectAssemblePage />} />
-        <Route path="/project/:projectId/issue-log" element={<ProjectIssueLogPage />} />
-        <Route path="/project/:projectId/new-entry" element={<NewEntryPage />} />
+        <Route path="/login/*" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId"
+          element={
+            <ProtectedRoute>
+              <ProjectPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId/overview"
+          element={
+            <ProtectedRoute>
+              <ProjectOverviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId/assemble"
+          element={
+            <ProtectedRoute>
+              <ProjectAssemblePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId/issue-log"
+          element={
+            <ProtectedRoute>
+              <ProjectIssueLogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:projectId/new-entry"
+          element={
+            <ProtectedRoute>
+              <NewEntryPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/home" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/sign-in/*" element={<Navigate to="/login" replace />} />
+        <Route
+          path="*"
+          element={
+            <ProtectedRoute>
+              <NotFoundPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Suspense>
   );

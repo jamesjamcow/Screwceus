@@ -2,12 +2,41 @@
 
 :root {
   color-scheme: light;
+  --site-bg: #efefef;
+  --site-panel: #f7f4ee;
+  --site-text: #141414;
+  --site-muted: #5f584d;
+  --site-border: #b8b0a5;
   font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #efefef;
+  background: var(--site-bg);
+  color: var(--site-text);
+}
+
+.auth-page .cl-rootBox {
+  width: 100%;
+  max-width: 26rem;
+}
+
+.auth-page .cl-cardBox {
+  width: 100%;
+}
+
+.cl-formButtonPrimary:hover,
+.cl-socialButtonsBlockButton:hover {
+  opacity: 0.9;
+}
+
+.cl-formFieldInput:focus {
+  border-color: #6f6d6a;
+  box-shadow: 0 0 0 3px rgba(111, 109, 106, 0.18);
+}
+
+.cl-footerActionLink:hover,
+.cl-userButtonPopoverActionButton:hover {
   color: #141414;
 }
