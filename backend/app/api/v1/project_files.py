@@ -32,12 +32,15 @@ router = APIRouter()
 @router.get("/", response_model=list[ProjectFileRead])
 def list_project_files(
     folder_id: int | None = Query(default=None),
+    root_only: bool = Query(default=False),
     user_id: str = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ) -> list[ProjectFile]:
     statement = select(ProjectFile).where(ProjectFile.owner_id == user_id)
     if folder_id is not None:
         statement = statement.where(ProjectFile.folder_id == folder_id)
+    elif root_only:
+        statement = statement.where(ProjectFile.folder_id.is_(None))
     statement = statement.order_by(ProjectFile.updated_at.desc())
     return list(session.exec(statement))
 
