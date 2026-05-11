@@ -4,12 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRightIcon, FolderIcon } from "../components/home/HomeIcons";
 import HomeSidebar from "../components/home/HomeSidebar";
 import HomeTopNav from "../components/home/HomeTopNav";
-import {
-  getCreateFolderErrorMessage,
-  getDriveErrorMessage,
-  useCreateFolder,
-  useDriveContents,
-} from "../hooks/useDrive";
+import { getDriveErrorMessage, useDriveContents } from "../hooks/useDrive";
 import { getFolderSearchParam } from "../lib/folderRouting";
 
 const EMPTY_ITEMS = [];
@@ -52,17 +47,13 @@ export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentFolderId = getFolderSearchParam(searchParams);
   const driveQuery = useDriveContents(currentFolderId);
-  const createFolderMutation = useCreateFolder();
 
   const folders = driveQuery.data?.folders ?? EMPTY_ITEMS;
   const projects = driveQuery.data?.projects ?? EMPTY_ITEMS;
   const folderTree = driveQuery.data?.folderTree ?? EMPTY_ITEMS;
 
   const folderPath = useMemo(() => getFolderPath(folderTree, currentFolderId), [folderTree, currentFolderId]);
-  const error =
-    (driveQuery.error && getDriveErrorMessage(driveQuery.error)) ||
-    (createFolderMutation.error && getCreateFolderErrorMessage(createFolderMutation.error)) ||
-    "";
+  const error = (driveQuery.error && getDriveErrorMessage(driveQuery.error)) || "";
 
   function openFolder(folderId) {
     setSearchParams({ folder: String(folderId) });
@@ -72,15 +63,8 @@ export default function HomePage() {
     setSearchParams({});
   }
 
-  async function handleNewFolder() {
-    const name = window.prompt("Folder name");
-    if (!name?.trim()) return;
-
-    try {
-      await createFolderMutation.mutateAsync({ name: name.trim(), parentId: currentFolderId });
-    } catch {
-      // The mutation error is rendered from TanStack Query state.
-    }
+  function handleNewFolder() {
+    navigate(currentFolderId ? `/folders/new?folder=${encodeURIComponent(String(currentFolderId))}` : "/folders/new");
   }
 
   function handleNewProject() {

@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const NewEntryPage = lazy(() => import("./pages/NewEntryPage"));
+const NewFolderPage = lazy(() => import("./pages/NewFolderPage"));
 const NewProjectPage = lazy(() => import("./pages/NewProjectPage"));
 const ProjectPage = lazy(() => import("./pages/ProjectPage"));
 const ProjectAssemblePage = lazy(() => import("./pages/ProjectAssemblePage"));
@@ -24,6 +25,14 @@ function App() {
           element={
             <ProtectedRoute>
               <HomePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/folders/new"
+          element={
+            <ProtectedRoute>
+              <NewFolderPage />
             </ProtectedRoute>
           }
         />
