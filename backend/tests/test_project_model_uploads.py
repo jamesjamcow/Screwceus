@@ -67,6 +67,28 @@ def test_upload_project_model_rejects_unsupported_file(monkeypatch):
     assert response.json()["detail"] == "Unsupported 3D model type"
 
 
+def test_upload_project_model_uses_local_storage_in_development(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "app_env", "development")
+    monkeypatch.setattr(settings, "uploadthing_token", "")
+    monkeypatch.setattr(settings, "uploadthing_api_key", "")
+    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
+
+    client, engine = _client(monkeypatch)
+    project_id = _create_project(engine)
+
+    response = client.post(
+        f"/api/v1/projects/{project_id}/model",
+        files={"file": ("assembly.glb", b"fake-glb", "model/gltf-binary")},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["model_url"].startswith("/uploads/")
+    assert payload["model_filename"] == "assembly.glb"
+    assert payload["model_file_key"].endswith("-assembly.glb")
+    assert (tmp_path / payload["model_file_key"]).read_bytes() == b"fake-glb"
+
+
 def test_create_project_initializes_model_fields(monkeypatch):
     client, _engine = _client(monkeypatch)
 

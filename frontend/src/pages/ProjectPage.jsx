@@ -238,7 +238,19 @@ export default function ProjectPage() {
 
           <div className="mt-6 space-y-3">
             {parts.map((part) => (
-              <PartCard key={part.id} part={part} badge={`#${part.id}`} />
+              <PartCard
+                key={part.id}
+                part={part}
+                badge={`#${part.id}`}
+                preview={
+                  <img
+                    src="/placeholder-document.svg"
+                    alt=""
+                    className="h-14 w-14 object-contain opacity-80"
+                    aria-hidden="true"
+                  />
+                }
+              />
             ))}
           </div>
         </section>

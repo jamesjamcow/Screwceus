@@ -39,7 +39,7 @@ export default function PartCard({
 
         <div className="grid gap-x-4 gap-y-3 md:grid-cols-2">
           {PART_FIELDS.map((field) => (
-            <div key={field.name} className={field.name === "notes" ? "md:col-span-2" : ""}>
+            <div key={field.name}>
               <p className="text-[0.72rem] uppercase tracking-[0.14em] text-[#6f6a60]">{field.label}</p>
               <p className={`mt-1 text-[0.98rem] text-[#141414] ${field.name === "notes" ? "whitespace-pre-line" : ""}`}>
                 {formatPartValue(field.name, part[field.name])}
