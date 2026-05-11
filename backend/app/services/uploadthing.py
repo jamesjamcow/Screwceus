@@ -80,9 +80,6 @@ async def upload_image_to_uploadthing(
 
 
 def _resolve_uploadthing_api_key() -> str:
-    if settings.uploadthing_api_key:
-        return settings.uploadthing_api_key
-
     token_data = _decode_uploadthing_token()
     return str(token_data.get("apiKey") or token_data.get("api_key") or token_data.get("key") or "")
 
