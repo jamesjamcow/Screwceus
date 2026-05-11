@@ -1,9 +1,7 @@
-import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
-import { formatProjectName } from "../lib/projectRouting";
 
 const ISSUE_COUNTS = {
   open: 18,
@@ -90,7 +88,8 @@ const ACTIVITY_FEED = [
 
 export default function ProjectIssueLogPage() {
   const { projectId } = useParams();
-  const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
+  const { project } = useOutletContext();
+  const projectName = project.name;
 
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">

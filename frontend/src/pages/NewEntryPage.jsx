@@ -2,12 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Image as KonvaImage, Layer, Line, Stage } from "react-konva";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useOutletContext } from "react-router-dom";
 
 import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import { PART_FIELDS, PART_FORM_DEFAULT_VALUES, partFormSchema } from "../lib/partSchema";
-import { formatProjectName } from "../lib/projectRouting";
 
 const FIELD_CLASS =
   "h-10 w-full rounded-[4px] border bg-[#efefef] px-3 text-[1.55rem] text-[#141414] focus:outline-none md:text-[1.12rem]";
@@ -22,11 +21,25 @@ const ERASER_STROKE = {
 };
 
 export default function NewEntryPage() {
-  const { projectId } = useParams();
+  const { project } = useOutletContext();
   const location = useLocation();
 
-  const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
-  const uploadedFileName = location.state?.uploadedFileName;
+  const projectName = project.name;
+  const documentSource = useMemo(() => {
+    const state = location.state ?? {};
+    const name = state.documentName ?? state.uploadedFileName ?? "";
+    const url = state.documentUrl ?? "";
+    const mimeType = state.documentMimeType ?? "";
+
+    return {
+      sourceType: state.sourceType ?? "",
+      name,
+      url,
+      mimeType,
+      photoId: state.photoId ?? null,
+      screenshotId: state.screenshotId ?? null,
+    };
+  }, [location.state]);
   const [submittedEntry, setSubmittedEntry] = useState(null);
 
   const {
@@ -56,13 +69,15 @@ export default function NewEntryPage() {
         <section className="grid gap-6 lg:grid-cols-[1.35fr_0.88fr]">
           <article className="overflow-hidden border border-[#c6c1b8] bg-[#e6e6e6]">
             <CanvasToolbar />
-            <SketchCanvas />
+            <SketchCanvas documentSource={documentSource} />
           </article>
 
           <article className="bg-[#efefef]">
             <h1 className="text-[2.75rem] font-semibold leading-none md:text-[2.35rem]">New Entry</h1>
             <p className="mt-2 min-h-6 text-sm text-[#54504a]">
-              {uploadedFileName ? `Uploaded: ${uploadedFileName}` : "No document selected"}
+              {documentSource.name
+                ? `${documentSource.sourceType === "clipboard" ? "Pasted" : "Uploaded"}: ${documentSource.name}`
+                : "No document selected"}
             </p>
 
             <form className="mt-4 space-y-4 md:mt-6" onSubmit={handleSubmit(handleValidSubmit)} noValidate>
@@ -154,13 +169,17 @@ function CanvasToolbar() {
   );
 }
 
-function SketchCanvas() {
+function SketchCanvas({ documentSource }) {
   const containerRef = useRef(null);
   const isDrawingRef = useRef(false);
   const [activeTool, setActiveTool] = useState("draw");
   const [lines, setLines] = useState([]);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
-  const backgroundImage = useKonvaImage("/placeholder-document.svg");
+  const backgroundSrc =
+    documentSource.url && documentSource.mimeType.startsWith("image/")
+      ? documentSource.url
+      : "/placeholder-document.svg";
+  const backgroundImage = useKonvaImage(backgroundSrc);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -357,15 +376,26 @@ function textAreaClassName(hasError, useMonoFont = false) {
 }
 
 function useKonvaImage(src) {
-  const [image, setImage] = useState(null);
+  const [loadedImage, setLoadedImage] = useState({ src: "", image: null });
 
   useEffect(() => {
+    let isCurrent = true;
     const nextImage = new window.Image();
+    nextImage.crossOrigin = "anonymous";
     nextImage.src = src;
-    nextImage.onload = () => setImage(nextImage);
+    nextImage.onload = () => {
+      if (isCurrent) {
+        setLoadedImage({ src, image: nextImage });
+      }
+    };
+
+    return () => {
+      isCurrent = false;
+      nextImage.onload = null;
+    };
   }, [src]);
 
-  return image;
+  return loadedImage.src === src ? loadedImage.image : null;
 }
 
 function PenIcon({ className = "" }) {

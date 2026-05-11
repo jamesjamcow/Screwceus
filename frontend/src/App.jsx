@@ -2,11 +2,13 @@ import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ProjectRouteGuard from "./components/project/ProjectRouteGuard";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const NewEntryPage = lazy(() => import("./pages/NewEntryPage"));
+const NewProjectPage = lazy(() => import("./pages/NewProjectPage"));
 const ProjectPage = lazy(() => import("./pages/ProjectPage"));
 const ProjectAssemblePage = lazy(() => import("./pages/ProjectAssemblePage"));
 const ProjectIssueLogPage = lazy(() => import("./pages/ProjectIssueLogPage"));
@@ -26,45 +28,27 @@ function App() {
           }
         />
         <Route
+          path="/projects/new"
+          element={
+            <ProtectedRoute>
+              <NewProjectPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/project/:projectId"
           element={
             <ProtectedRoute>
-              <ProjectPage />
+              <ProjectRouteGuard />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/project/:projectId/overview"
-          element={
-            <ProtectedRoute>
-              <ProjectOverviewPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/project/:projectId/assemble"
-          element={
-            <ProtectedRoute>
-              <ProjectAssemblePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/project/:projectId/issue-log"
-          element={
-            <ProtectedRoute>
-              <ProjectIssueLogPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/project/:projectId/new-entry"
-          element={
-            <ProtectedRoute>
-              <NewEntryPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<ProjectPage />} />
+          <Route path="overview" element={<ProjectOverviewPage />} />
+          <Route path="assemble" element={<ProjectAssemblePage />} />
+          <Route path="issue-log" element={<ProjectIssueLogPage />} />
+          <Route path="new-entry" element={<NewEntryPage />} />
+        </Route>
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/sign-in/*" element={<Navigate to="/login" replace />} />
         <Route

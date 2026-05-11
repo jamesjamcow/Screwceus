@@ -1,18 +1,25 @@
-import { useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 
 import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import { createPartRecords } from "../lib/partSchema";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
-import { formatProjectName, toPathSafeProjectId } from "../lib/projectRouting";
+import { toPathSafeProjectId } from "../lib/projectRouting";
+import { resolveApiAssetUrl } from "../lib/axios";
+import { useAuthedApi } from "../hooks/useAuthedApi";
+import { uploadPhoto } from "../services/driveService";
 
 export default function ProjectPage() {
   const { projectId } = useParams();
+  const { project } = useOutletContext();
   const navigate = useNavigate();
   const uploadInputRef = useRef(null);
+  const { authedFetch } = useAuthedApi();
+  const [documentError, setDocumentError] = useState("");
+  const [isStoringDocument, setIsStoringDocument] = useState(false);
 
-  const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
+  const projectName = project.name;
   const targetProjectId = useMemo(() => toPathSafeProjectId(projectId), [projectId]);
   const parts = useMemo(() => createPartRecords(), []);
 
@@ -21,14 +28,94 @@ export default function ProjectPage() {
   };
 
   const handlePickDocument = () => {
+    setDocumentError("");
     uploadInputRef.current?.click();
   };
 
-  const handleDocumentSelected = (event) => {
+  const storeProjectImage = async (file, { sourceType, title, caption }) => {
+    setDocumentError("");
+    setIsStoringDocument(true);
+
+    try {
+      const { photo, screenshot } = await authedFetch(async (token) => {
+        return uploadPhoto(token, {
+          file,
+          title,
+          projectId,
+          caption,
+          sortOrder: 0,
+        });
+      });
+
+      navigate(`/project/${targetProjectId}/new-entry`, {
+        state: {
+          sourceType,
+          documentName: photo.title,
+          documentUrl: resolveApiAssetUrl(photo.image_url),
+          documentMimeType: file.type,
+          photoId: photo.id,
+          screenshotId: screenshot.id,
+        },
+      });
+    } catch {
+      setDocumentError("Could not store the image. Try again.");
+    } finally {
+      setIsStoringDocument(false);
+    }
+  };
+
+  const handleDocumentSelected = async (event) => {
     const selectedFile = event.target.files?.[0];
+    event.target.value = "";
+    if (!selectedFile) return;
+
+    if (selectedFile.type.startsWith("image/")) {
+      await storeProjectImage(selectedFile, {
+        sourceType: "upload",
+        title: selectedFile.name,
+        caption: selectedFile.name,
+      });
+      return;
+    }
+
     navigate(`/project/${targetProjectId}/new-entry`, {
-      state: selectedFile ? { uploadedFileName: selectedFile.name } : undefined,
+      state: {
+        sourceType: "upload",
+        documentName: selectedFile.name,
+        documentMimeType: selectedFile.type,
+      },
     });
+  };
+
+  const handlePasteImage = async () => {
+    if (!navigator.clipboard?.read) {
+      setDocumentError("Clipboard image paste is not available in this browser.");
+      return;
+    }
+
+    setDocumentError("");
+
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      const imageBlob = await findFirstClipboardImageBlob(clipboardItems);
+
+      if (!imageBlob) {
+        setDocumentError("The clipboard does not contain an image.");
+        return;
+      }
+
+      const file = new File([imageBlob.blob], filenameForMimeType(imageBlob.type), {
+        type: imageBlob.type,
+      });
+
+      await storeProjectImage(file, {
+        sourceType: "clipboard",
+        title: "Pasted image",
+        caption: "Pasted image",
+      });
+    } catch {
+      setDocumentError("Could not read the clipboard. Check browser permissions and try again.");
+    }
   };
 
   return (
@@ -47,11 +134,14 @@ export default function ProjectPage() {
           <div className="mt-16 flex items-center justify-center md:mt-28">
             <button
               type="button"
-              onClick={handleStartEntry}
-              className="flex flex-col items-center text-center text-[#141414] transition-opacity hover:opacity-80"
+              onClick={handlePasteImage}
+              disabled={isStoringDocument}
+              className="flex flex-col items-center text-center text-[#141414] transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-55"
             >
               <UploadIcon className="h-16 w-16 md:h-[76px] md:w-[76px]" />
-              <span className="mt-2 text-[2rem] leading-none md:text-[2.15rem]">Paste Image</span>
+              <span className="mt-2 text-[2rem] leading-none md:text-[2.15rem]">
+                {isStoringDocument ? "Storing image..." : "Paste Image"}
+              </span>
               <span className="mt-2 text-[1.6rem] leading-none md:text-[1.5rem]">or upload</span>
               <span className="mt-2 text-[1.6rem] leading-none md:text-[1.5rem]">or blank</span>
             </button>
@@ -60,9 +150,18 @@ export default function ProjectPage() {
             <button
               type="button"
               onClick={handlePickDocument}
-              className="rounded-full border border-[#6f6d6a] px-4 py-1 text-sm text-[#141414] transition-colors hover:bg-[#e3dfd8]"
+              disabled={isStoringDocument}
+              className="rounded-full border border-[#6f6d6a] px-4 py-1 text-sm text-[#141414] transition-colors hover:bg-[#e3dfd8] disabled:cursor-not-allowed disabled:opacity-55"
             >
               Upload Document
+            </button>
+            <button
+              type="button"
+              onClick={handleStartEntry}
+              disabled={isStoringDocument}
+              className="ml-3 rounded-full border border-[#6f6d6a] px-4 py-1 text-sm text-[#141414] transition-colors hover:bg-[#e3dfd8] disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Blank Entry
             </button>
             <input
               ref={uploadInputRef}
@@ -72,6 +171,11 @@ export default function ProjectPage() {
               onChange={handleDocumentSelected}
             />
           </div>
+          {documentError ? (
+            <p role="alert" className="mt-3 text-center text-sm text-[#9d3434]">
+              {documentError}
+            </p>
+          ) : null}
         </section>
 
         <section className="px-5 pb-10 pt-6 md:px-0">
@@ -104,6 +208,27 @@ export default function ProjectPage() {
       </main>
     </div>
   );
+}
+
+async function findFirstClipboardImageBlob(clipboardItems) {
+  for (const item of clipboardItems) {
+    const imageType = item.types.find((type) => type.startsWith("image/"));
+    if (imageType) {
+      return {
+        type: imageType,
+        blob: await item.getType(imageType),
+      };
+    }
+  }
+
+  return null;
+}
+
+function filenameForMimeType(mimeType) {
+  if (mimeType === "image/jpeg") return "pasted-image.jpg";
+  if (mimeType === "image/webp") return "pasted-image.webp";
+  if (mimeType === "image/gif") return "pasted-image.gif";
+  return "pasted-image.png";
 }
 
 function UploadIcon({ className = "" }) {

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectFileCreate(BaseModel):
@@ -32,6 +32,8 @@ class ProjectScreenshotCreate(BaseModel):
 
 
 class ProjectScreenshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     project_file_id: int
     photo_id: int
