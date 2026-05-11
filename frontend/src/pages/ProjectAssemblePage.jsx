@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { Float, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 
@@ -7,11 +7,11 @@ import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
 import { PART_FIELDS, createPartRecords, formatPartValue } from "../lib/partSchema";
-import { formatProjectName } from "../lib/projectRouting";
 
 export default function ProjectAssemblePage() {
   const { projectId } = useParams();
-  const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
+  const { project } = useOutletContext();
+  const projectName = project.name;
   const selectedPart = useMemo(() => createPartRecords()[0], []);
   const inventorySummary = useMemo(
     () =>
