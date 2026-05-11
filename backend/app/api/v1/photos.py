@@ -8,7 +8,7 @@ from app.models.photo import Photo
 from app.models.project_file import ProjectFile
 from app.models.project_screenshot import ProjectScreenshot
 from app.schemas.photo import PhotoCreate, PhotoRead, PhotoUploadRead
-from app.services.uploadthing import upload_image_to_uploadthing
+from app.services.uploadthing import upload_file_to_uploadthing
 
 router = APIRouter()
 
@@ -76,7 +76,7 @@ async def upload_photo(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     filename = _image_filename(file.filename, extension)
-    uploaded_file = await upload_image_to_uploadthing(
+    uploaded_file = await upload_file_to_uploadthing(
         content=contents,
         filename=filename,
         content_type=content_type,

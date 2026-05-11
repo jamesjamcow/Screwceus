@@ -71,6 +71,20 @@ export async function createProjectFile(token, { name, folderId, description = "
   return response.data;
 }
 
+export async function uploadProjectModel(token, { projectId, file }) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await api.post(`/v1/projects/${projectId}/model`, formData, {
+    headers: {
+      ...authHeaders(token),
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+}
+
 export async function uploadPhoto(token, { file, title, projectId, caption, sortOrder }) {
   const formData = new FormData();
   formData.append("file", file);

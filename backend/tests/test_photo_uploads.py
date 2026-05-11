@@ -19,7 +19,7 @@ from app.services.uploadthing import UploadThingFile
 def test_upload_photo_creates_photo_with_uploadthing_url(monkeypatch):
     upload_calls = []
 
-    async def fake_upload_image_to_uploadthing(**kwargs):
+    async def fake_upload_file_to_uploadthing(**kwargs):
         upload_calls.append(kwargs)
         return UploadThingFile(
             name=kwargs["filename"],
@@ -27,7 +27,7 @@ def test_upload_photo_creates_photo_with_uploadthing_url(monkeypatch):
             key="generated-panel-key",
         )
 
-    monkeypatch.setattr(photos_api, "upload_image_to_uploadthing", fake_upload_image_to_uploadthing)
+    monkeypatch.setattr(photos_api, "upload_file_to_uploadthing", fake_upload_file_to_uploadthing)
     client, engine = _client(monkeypatch)
 
     response = client.post(
@@ -56,14 +56,14 @@ def test_upload_photo_creates_photo_with_uploadthing_url(monkeypatch):
 
 
 def test_upload_photo_with_project_id_creates_photo_and_project_screenshot(monkeypatch):
-    async def fake_upload_image_to_uploadthing(**kwargs):
+    async def fake_upload_file_to_uploadthing(**kwargs):
         return UploadThingFile(
             name=kwargs["filename"],
             url="https://screwceus.ufs.sh/f/project-panel-key",
             key="project-panel-key",
         )
 
-    monkeypatch.setattr(photos_api, "upload_image_to_uploadthing", fake_upload_image_to_uploadthing)
+    monkeypatch.setattr(photos_api, "upload_file_to_uploadthing", fake_upload_file_to_uploadthing)
     client, engine = _client(monkeypatch)
 
     with Session(engine) as session:

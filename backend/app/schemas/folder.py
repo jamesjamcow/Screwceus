@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FolderCreate(BaseModel):
@@ -16,6 +16,8 @@ class FolderUpdate(BaseModel):
 
 
 class FolderRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     owner_id: str
     name: str
@@ -25,4 +27,4 @@ class FolderRead(BaseModel):
 
 
 class FolderTree(FolderRead):
-    children: list[FolderTree] = []
+    children: list[FolderTree] = Field(default_factory=list)
