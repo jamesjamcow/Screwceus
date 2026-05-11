@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import re
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlmodel import Session, select
@@ -8,7 +9,9 @@ from app.core.config import settings
 from app.core.security import get_current_user_id
 from app.db.session import get_session
 from app.models.folder import Folder
+from app.models.custom_part_type import CustomPartType
 from app.models.part import Part
+from app.models.part import BASE_PART_TYPES
 from app.models.photo import Photo
 from app.models.project_file import ProjectFile
 from app.models.project_part import ProjectPart
@@ -18,6 +21,7 @@ from app.schemas.project_file import (
     ProjectFileRead,
     ProjectFileUpdate,
     ProjectPartAdd,
+    ProjectPartEntryCreate,
     ProjectPartRead,
     ProjectPartUpdate,
     ProjectScreenshotCreate,
@@ -266,7 +270,8 @@ def list_project_parts(
         .where(ProjectPart.project_file_id == project_id)
         .order_by(ProjectPart.created_at)
     )
-    return list(session.exec(statement))
+    links = list(session.exec(statement))
+    return [_project_part_payload(link, session) for link in links]
 
 
 @router.post(
@@ -299,13 +304,85 @@ def add_part_to_project(
         project_file_id=project_id,
         part_id=payload.part_id,
         owner_id=user_id,
+        quantity_needed=payload.quantity_needed,
         point=payload.point,
         notes=payload.notes,
+        source_image_url=payload.source_image_url,
+        annotation_json=payload.annotation_json,
     )
     session.add(link)
     session.commit()
     session.refresh(link)
-    return link
+    return _project_part_payload(link, session)
+
+
+@router.post(
+    "/{project_id}/part-entry",
+    response_model=ProjectPartRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_project_part_entry(
+    project_id: int,
+    payload: ProjectPartEntryCreate,
+    user_id: str = Depends(get_current_user_id),
+    session: Session = Depends(get_session),
+) -> ProjectPart:
+    _require_project(project_id, user_id, session)
+
+    part_type = _resolve_part_type(payload.type, user_id, session)
+    part_name = payload.name.strip()
+    part_notes = payload.notes.strip()
+
+    part = session.exec(
+        select(Part).where(
+            Part.owner_id == user_id,
+            Part.name == part_name,
+            Part.type == part_type,
+        )
+    ).first()
+    if not part:
+        part = Part(
+            owner_id=user_id,
+            name=part_name,
+            type=part_type,
+            dimensions=payload.dimensions,
+            notes=part_notes,
+        )
+        session.add(part)
+        session.commit()
+        session.refresh(part)
+
+    link = session.exec(
+        select(ProjectPart).where(
+            ProjectPart.project_file_id == project_id,
+            ProjectPart.part_id == part.id,
+        )
+    ).first()
+    if link:
+        link.quantity_needed += payload.quantity_needed
+        link.point = payload.point
+        if part_notes:
+            link.notes = part_notes
+        if payload.source_image_url:
+            link.source_image_url = payload.source_image_url
+        if payload.annotation_json is not None:
+            link.annotation_json = payload.annotation_json
+    else:
+        link = ProjectPart(
+            project_file_id=project_id,
+            part_id=part.id,
+            owner_id=user_id,
+            quantity_needed=payload.quantity_needed,
+            point=payload.point,
+            notes=part_notes,
+            source_image_url=payload.source_image_url,
+            annotation_json=payload.annotation_json,
+        )
+
+    session.add(link)
+    session.commit()
+    session.refresh(link)
+    return _project_part_payload(link, session)
 
 
 @router.patch("/{project_id}/parts/{link_id}", response_model=ProjectPartRead)
@@ -328,7 +405,7 @@ def update_project_part(
     session.add(link)
     session.commit()
     session.refresh(link)
-    return link
+    return _project_part_payload(link, session)
 
 
 @router.delete("/{project_id}/parts/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -356,3 +433,57 @@ def _require_project(project_id: int, user_id: str, session: Session) -> Project
     if not project or project.owner_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     return project
+
+
+def _resolve_part_type(raw_type: str, user_id: str, session: Session) -> str:
+    label = raw_type.strip()
+    normalized = _normalize_part_type_value(label)
+
+    for base_type in BASE_PART_TYPES:
+        if normalized == base_type or label.lower() == base_type.replace("-", " "):
+            return base_type
+
+    existing = session.exec(
+        select(CustomPartType).where(
+            CustomPartType.owner_id == user_id,
+            (CustomPartType.value == normalized) | (CustomPartType.label == label),
+        )
+    ).first()
+    if existing:
+        return existing.value
+
+    custom_type = CustomPartType(
+        owner_id=user_id,
+        value=normalized,
+        label=_format_part_type_label(label),
+    )
+    session.add(custom_type)
+    session.commit()
+    session.refresh(custom_type)
+    return custom_type.value
+
+
+def _normalize_part_type_value(raw_type: str) -> str:
+    value = re.sub(r"[^a-z0-9]+", "-", raw_type.strip().lower()).strip("-")
+    return value or "custom"
+
+
+def _format_part_type_label(raw_type: str) -> str:
+    return re.sub(r"\s+", " ", raw_type.strip()).title()
+
+
+def _project_part_payload(link: ProjectPart, session: Session) -> dict:
+    part = session.get(Part, link.part_id)
+    return {
+        "id": link.id,
+        "project_file_id": link.project_file_id,
+        "part_id": link.part_id,
+        "owner_id": link.owner_id,
+        "quantity_needed": link.quantity_needed,
+        "point": link.point,
+        "notes": link.notes,
+        "source_image_url": link.source_image_url,
+        "annotation_json": link.annotation_json,
+        "created_at": link.created_at,
+        "part": part,
+    }

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
 import { Sphere } from "@react-three/drei";
 
@@ -6,40 +6,62 @@ import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
 import ProjectModelViewer from "../components/project/ProjectModelViewer";
-import { createPartRecords } from "../lib/partSchema";
+import { useAuthedApi } from "../hooks/useAuthedApi";
+import { listProjectParts, updateProjectPart } from "../services/driveService";
 
 export default function ProjectOverviewPage() {
   const { projectId } = useParams();
   const { project } = useOutletContext();
+  const { authedFetch } = useAuthedApi();
   const projectName = project.name;
-  const [parts, setParts] = useState(() =>
-    createPartRecords().map((part, index) => ({
-      ...part,
-      point:
-        index < 2
-          ? [
-              Number((0.35 + index * 0.45).toFixed(3)),
-              Number((0.4 - index * 0.18).toFixed(3)),
-              Number((0.12 + index * 0.1).toFixed(3)),
-            ]
-          : undefined,
-    })),
-  );
-  const [selectedPartId, setSelectedPartId] = useState(null);
+  const [projectParts, setProjectParts] = useState([]);
+  const [selectedLinkId, setSelectedLinkId] = useState(null);
+  const [partsError, setPartsError] = useState("");
+  const [isLoadingParts, setIsLoadingParts] = useState(true);
   const modelClickRef = useRef(false);
 
-  const markers = useMemo(() => parts.filter((part) => part.point), [parts]);
+  const markers = useMemo(() => projectParts.filter((projectPart) => projectPart.point), [projectParts]);
 
-  const handlePartSelect = (partId) => {
-    setSelectedPartId(partId);
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProjectParts() {
+      setIsLoadingParts(true);
+      setPartsError("");
+
+      try {
+        const records = await authedFetch((token) => listProjectParts(token, { projectId }));
+        if (!ignore) {
+          setProjectParts(records);
+        }
+      } catch {
+        if (!ignore) {
+          setPartsError("Could not load project parts.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingParts(false);
+        }
+      }
+    }
+
+    loadProjectParts();
+
+    return () => {
+      ignore = true;
+    };
+  }, [authedFetch, projectId]);
+
+  const handlePartSelect = (linkId) => {
+    setSelectedLinkId(linkId);
   };
 
   const handleClearSelection = () => {
-    setSelectedPartId(null);
+    setSelectedLinkId(null);
   };
 
-  const handleModelClick = (event) => {
-    if (selectedPartId === null) {
+  const handleModelClick = useCallback(async (event) => {
+    if (selectedLinkId === null) {
       return;
     }
 
@@ -52,17 +74,32 @@ export default function ProjectOverviewPage() {
       Number(event.point.z.toFixed(3)),
     ];
 
-    setParts((currentParts) =>
-      currentParts.map((part) =>
-        part.id === selectedPartId
+    setProjectParts((currentParts) =>
+      currentParts.map((projectPart) =>
+        projectPart.id === selectedLinkId
           ? {
-              ...part,
+              ...projectPart,
               point: clickedPoint,
             }
-          : part,
+          : projectPart,
       ),
     );
-  };
+
+    try {
+      const updatedProjectPart = await authedFetch((token) =>
+        updateProjectPart(token, {
+          projectId,
+          linkId: selectedLinkId,
+          values: { point: clickedPoint },
+        }),
+      );
+      setProjectParts((currentParts) =>
+        currentParts.map((projectPart) => (projectPart.id === selectedLinkId ? updatedProjectPart : projectPart)),
+      );
+    } catch {
+      setPartsError("Could not save the selected point.");
+    }
+  }, [authedFetch, projectId, selectedLinkId]);
 
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
@@ -103,21 +140,21 @@ export default function ProjectOverviewPage() {
               <span>
                 {!project.model_url
                   ? "Upload a GLB, GLTF, or GIB file."
-                  : selectedPartId === null
+                  : selectedLinkId === null
                     ? "Select a card below, then click the 3D model to store a point."
-                    : `Selected card ${selectedPartId}. Click the model to update its point.`}
+                    : `Selected card ${selectedLinkId}. Click the model to update its point.`}
               </span>
             }
           >
-            {markers.map((part) => (
+            {markers.map((projectPart) => (
               <Sphere
-                key={part.id}
+                key={projectPart.id}
                 args={[0.08, 18, 18]}
-                position={part.point}
+                position={projectPart.point}
                 onClick={(event) => {
                   modelClickRef.current = true;
                   event.stopPropagation();
-                  handlePartSelect(part.id);
+                  handlePartSelect(projectPart.id);
                 }}
               >
                 <meshStandardMaterial color="#d92727" />
@@ -128,20 +165,30 @@ export default function ProjectOverviewPage() {
 
         <section className="mt-7">
           <div className="max-h-[300px] space-y-3 overflow-y-auto pr-1 md:max-h-[340px]">
-            {parts.map((part) => (
+            {isLoadingParts ? <p className="text-sm text-[#5f584d]">Loading project parts...</p> : null}
+            {partsError ? <p className="text-sm text-[#9d3434]">{partsError}</p> : null}
+            {!isLoadingParts && !partsError && projectParts.length === 0 ? (
+              <p className="text-sm text-[#5f584d]">No parts have been linked to this project.</p>
+            ) : null}
+            {projectParts.map((projectPart) => (
               <PartCard
-                key={part.id}
-                part={part}
+                key={projectPart.id}
+                part={projectPart.part}
+                imageUrl={projectPart.source_image_url}
+                annotationJson={projectPart.annotation_json}
                 data-part-card="true"
-                badge={`#${part.id}`}
-                preview={<PartPreviewIcon className="h-[54px] w-[54px] text-[#8ca7b8]" />}
-                footer={<span>Point: {part.point ? formatPoint(part.point) : "Not set"}</span>}
-                selected={selectedPartId === part.id}
-                onClick={() => handlePartSelect(part.id)}
+                footer={
+                  <span>
+                    Needed: {projectPart.quantity_needed} · Point:{" "}
+                    {projectPart.point ? formatPoint(projectPart.point) : "Not set"}
+                  </span>
+                }
+                selected={selectedLinkId === projectPart.id}
+                onClick={() => handlePartSelect(projectPart.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    handlePartSelect(part.id);
+                    handlePartSelect(projectPart.id);
                   }
                 }}
                 className="md:px-6 md:py-4"
@@ -151,15 +198,6 @@ export default function ProjectOverviewPage() {
         </section>
       </main>
     </div>
-  );
-}
-
-function PartPreviewIcon({ className = "" }) {
-  return (
-    <svg viewBox="0 0 64 64" aria-hidden="true" className={className}>
-      <path d="M13 18 32 7l19 11v28L32 57 13 46Z" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M13 18 32 29v28M51 18 32 29M32 7v22" fill="none" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
   );
 }
 

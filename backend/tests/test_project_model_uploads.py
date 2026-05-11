@@ -9,7 +9,10 @@ from app.core import security
 from app.core.config import settings
 from app.db import base  # noqa: F401
 from app.db.session import get_session
+from app.models.custom_part_type import CustomPartType
+from app.models.part import Part
 from app.models.project_file import ProjectFile
+from app.models.project_part import ProjectPart
 from app.models.user import User
 from app.services.uploadthing import UploadThingFile
 
@@ -102,6 +105,126 @@ def test_create_project_initializes_model_fields(monkeypatch):
     assert payload["model_url"] == ""
     assert payload["model_filename"] == ""
     assert payload["model_file_key"] == ""
+
+
+def test_project_parts_include_quantity_and_part_payload(monkeypatch):
+    client, engine = _client(monkeypatch)
+    project_id = _create_project(engine)
+
+    with Session(engine) as session:
+        part = Part(
+            owner_id="user_project",
+            name="Drive Screw",
+            type="fastener",
+            dimensions={"thread": "M4", "length": "40mm"},
+            notes="Primary chassis fastener.",
+        )
+        session.add(part)
+        session.commit()
+        session.refresh(part)
+
+        link = ProjectPart(
+            owner_id="user_project",
+            project_file_id=project_id,
+            part_id=part.id,
+            quantity_needed=6,
+            point=[0.1, 0.2, 0.3],
+            notes="Install first.",
+            source_image_url="https://example.com/panel.webp",
+            annotation_json={"version": 1, "lines": [{"tool": "draw", "points": [0.1, 0.2]}]},
+        )
+        session.add(link)
+        session.commit()
+
+    response = client.get(f"/api/v1/projects/{project_id}/parts")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["quantity_needed"] == 6
+    assert payload[0]["point"] == [0.1, 0.2, 0.3]
+    assert payload[0]["source_image_url"] == "https://example.com/panel.webp"
+    assert payload[0]["annotation_json"] == {"version": 1, "lines": [{"tool": "draw", "points": [0.1, 0.2]}]}
+    assert payload[0]["part"]["name"] == "Drive Screw"
+    assert payload[0]["part"]["dimensions"] == {"thread": "M4", "length": "40mm"}
+
+
+def test_create_project_part_entry_creates_custom_type_part_and_link(monkeypatch):
+    client, engine = _client(monkeypatch)
+    project_id = _create_project(engine)
+
+    response = client.post(
+        f"/api/v1/projects/{project_id}/part-entry",
+        json={
+            "name": "Retaining Clip",
+            "type": "spring clip",
+            "dimensions": {"width": "12mm"},
+            "notes": "Use on the left rail.",
+            "quantity_needed": 4,
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["quantity_needed"] == 4
+    assert payload["part"]["name"] == "Retaining Clip"
+    assert payload["part"]["type"] == "spring-clip"
+
+    with Session(engine) as session:
+        custom_type = session.exec(
+            select(CustomPartType).where(
+                CustomPartType.owner_id == "user_project",
+                CustomPartType.value == "spring-clip",
+            )
+        ).one()
+        assert custom_type.label == "Spring Clip"
+        assert session.exec(select(Part)).one().type == "spring-clip"
+        assert session.exec(select(ProjectPart)).one().quantity_needed == 4
+
+
+def test_create_project_part_entry_reuses_existing_part_and_adds_quantity(monkeypatch):
+    client, engine = _client(monkeypatch)
+    project_id = _create_project(engine)
+
+    with Session(engine) as session:
+        part = Part(
+            owner_id="user_project",
+            name="Drive Screw",
+            type="fastener",
+            dimensions={"thread": "M4"},
+            notes="",
+        )
+        session.add(part)
+        session.commit()
+        session.refresh(part)
+
+        link = ProjectPart(
+            owner_id="user_project",
+            project_file_id=project_id,
+            part_id=part.id,
+            quantity_needed=2,
+        )
+        session.add(link)
+        session.commit()
+
+    response = client.post(
+        f"/api/v1/projects/{project_id}/part-entry",
+        json={
+            "name": "Drive Screw",
+            "type": "fastener",
+            "dimensions": {"thread": "M4", "length": "40mm"},
+            "notes": "",
+            "quantity_needed": 3,
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["quantity_needed"] == 5
+
+    with Session(engine) as session:
+        assert len(session.exec(select(Part)).all()) == 1
+        assert len(session.exec(select(ProjectPart)).all()) == 1
+        assert session.exec(select(ProjectPart)).one().quantity_needed == 5
 
 
 def _create_project(engine):
