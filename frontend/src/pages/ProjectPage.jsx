@@ -10,6 +10,13 @@ import { resolveApiAssetUrl } from "../lib/axios";
 import { useAuthedApi } from "../hooks/useAuthedApi";
 import { uploadPhoto } from "../services/driveService";
 
+const IMAGE_COMPRESSION_OPTIONS = {
+  fileType: "image/webp",
+  initialQuality: 0.65,
+  maxWidthOrHeight: 1280,
+  useWebWorker: true,
+};
+
 export default function ProjectPage() {
   const { projectId } = useParams();
   const { project } = useOutletContext();
@@ -37,9 +44,10 @@ export default function ProjectPage() {
     setIsStoringDocument(true);
 
     try {
+      const compressedFile = await compressImageForUpload(file);
       const { photo, screenshot } = await authedFetch(async (token) => {
         return uploadPhoto(token, {
-          file,
+          file: compressedFile,
           title,
           projectId,
           caption,
@@ -52,7 +60,7 @@ export default function ProjectPage() {
           sourceType,
           documentName: photo.title,
           documentUrl: resolveApiAssetUrl(photo.image_url),
-          documentMimeType: file.type,
+          documentMimeType: compressedFile.type,
           photoId: photo.id,
           screenshotId: screenshot.id,
         },
@@ -222,6 +230,22 @@ async function findFirstClipboardImageBlob(clipboardItems) {
   }
 
   return null;
+}
+
+async function compressImageForUpload(file) {
+  const { default: imageCompression } = await import("browser-image-compression");
+  const compressedBlob = await imageCompression(file, IMAGE_COMPRESSION_OPTIONS);
+  const filename = replaceFileExtension(file.name || "uploaded-image", "webp");
+
+  return new File([compressedBlob], filename, {
+    type: "image/webp",
+    lastModified: file.lastModified,
+  });
+}
+
+function replaceFileExtension(filename, extension) {
+  const baseName = filename.replace(/\.[^/.]+$/, "");
+  return `${baseName || "uploaded-image"}.${extension}`;
 }
 
 function filenameForMimeType(mimeType) {
