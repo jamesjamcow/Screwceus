@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Sphere } from "@react-three/drei";
 
@@ -7,13 +7,13 @@ import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
 import { createPartRecords } from "../lib/partSchema";
-import { formatProjectName } from "../lib/projectRouting";
 
 const MODEL_FILE_PLACEHOLDER = "src/assets/models/project-model.glb";
 
 export default function ProjectOverviewPage() {
   const { projectId } = useParams();
-  const projectName = useMemo(() => formatProjectName(projectId), [projectId]);
+  const { project } = useOutletContext();
+  const projectName = project.name;
   const [parts, setParts] = useState(() =>
     createPartRecords().map((part, index) => ({
       ...part,

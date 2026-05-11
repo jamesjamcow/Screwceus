@@ -4,6 +4,7 @@ import { useAuthedApi } from "./useAuthedApi";
 import {
   createFolder,
   createProjectFile,
+  getProjectFile,
   listFolders,
   listFolderTree,
   listProjectFiles,
@@ -11,6 +12,22 @@ import {
 
 function getErrorMessage(error, fallback) {
   return error?.response?.data?.detail || fallback;
+}
+
+export function normalizeProjectId(projectId) {
+  const value = String(projectId ?? "").trim();
+
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const numericProjectId = Number(value);
+
+  if (!Number.isSafeInteger(numericProjectId) || numericProjectId <= 0) {
+    return null;
+  }
+
+  return String(numericProjectId);
 }
 
 export function useDriveContents(folderId) {
@@ -30,6 +47,19 @@ export function useDriveContents(folderId) {
 
         return { folders, projects, folderTree };
       }),
+  });
+}
+
+export function useProject(projectId) {
+  const { authedFetch, isAuthReady } = useAuthedApi();
+  const normalizedProjectId = normalizeProjectId(projectId);
+
+  return useQuery({
+    queryKey: ["project", normalizedProjectId ?? "invalid"],
+    enabled: isAuthReady && Boolean(normalizedProjectId),
+    staleTime: 30_000,
+    retry: (failureCount, error) => error?.response?.status !== 404 && failureCount < 1,
+    queryFn: () => authedFetch((token) => getProjectFile(token, normalizedProjectId)),
   });
 }
 
@@ -67,4 +97,8 @@ export function getCreateFolderErrorMessage(error) {
 
 export function getCreateProjectErrorMessage(error) {
   return getErrorMessage(error, "Could not create project file.");
+}
+
+export function getProjectErrorMessage(error) {
+  return getErrorMessage(error, "Could not load project.");
 }

@@ -6,22 +6,13 @@ import HomeSidebar from "../components/home/HomeSidebar";
 import HomeTopNav from "../components/home/HomeTopNav";
 import {
   getCreateFolderErrorMessage,
-  getCreateProjectErrorMessage,
   getDriveErrorMessage,
   useCreateFolder,
-  useCreateProject,
   useDriveContents,
 } from "../hooks/useDrive";
+import { getFolderSearchParam } from "../lib/folderRouting";
 
 const EMPTY_ITEMS = [];
-
-function getFolderSearchParam(searchParams) {
-  const rawFolderId = searchParams.get("folder");
-  if (!rawFolderId) return null;
-
-  const parsedFolderId = Number(rawFolderId);
-  return Number.isInteger(parsedFolderId) && parsedFolderId > 0 ? parsedFolderId : null;
-}
 
 function getFolderPath(tree, folderId) {
   if (!folderId) return [];
@@ -62,7 +53,6 @@ export default function HomePage() {
   const currentFolderId = getFolderSearchParam(searchParams);
   const driveQuery = useDriveContents(currentFolderId);
   const createFolderMutation = useCreateFolder();
-  const createProjectMutation = useCreateProject();
 
   const folders = driveQuery.data?.folders ?? EMPTY_ITEMS;
   const projects = driveQuery.data?.projects ?? EMPTY_ITEMS;
@@ -72,7 +62,6 @@ export default function HomePage() {
   const error =
     (driveQuery.error && getDriveErrorMessage(driveQuery.error)) ||
     (createFolderMutation.error && getCreateFolderErrorMessage(createFolderMutation.error)) ||
-    (createProjectMutation.error && getCreateProjectErrorMessage(createProjectMutation.error)) ||
     "";
 
   function openFolder(folderId) {
@@ -94,16 +83,8 @@ export default function HomePage() {
     }
   }
 
-  async function handleNewProject() {
-    const name = window.prompt("Project file name");
-    if (!name?.trim()) return;
-
-    try {
-      const project = await createProjectMutation.mutateAsync({ name: name.trim(), folderId: currentFolderId });
-      navigate(`/project/${project.id}`);
-    } catch {
-      // The mutation error is rendered from TanStack Query state.
-    }
+  function handleNewProject() {
+    navigate(currentFolderId ? `/projects/new?folder=${encodeURIComponent(String(currentFolderId))}` : "/projects/new");
   }
 
   const hasContents = folders.length > 0 || projects.length > 0;
