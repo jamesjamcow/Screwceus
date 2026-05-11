@@ -21,6 +21,9 @@ class ProjectFileRead(BaseModel):
     folder_id: int | None
     name: str
     description: str
+    model_url: str
+    model_filename: str
+    model_file_key: str
     created_at: datetime
     updated_at: datetime
 

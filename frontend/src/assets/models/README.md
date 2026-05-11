@@ -1,7 +1,6 @@
 # 3D Model Placeholder
 
-Put the project overview 3D model files in this folder.
+Project overview models are uploaded by the user when a project is created.
 
-Expected placeholder filename:
-
-- `project-model.glb`
+The app stores the UploadThing URL on the project record and loads that model
+from the database-backed project response.

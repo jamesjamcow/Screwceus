@@ -19,6 +19,10 @@ const projectFormSchema = z.object({
     .max(2000, "Description must be 2000 characters or fewer.")
     .optional()
     .or(z.literal("")),
+  modelFile: z
+    .any()
+    .optional()
+    .refine((files) => !files?.length || isSupportedModelFile(files[0]), "Upload a GLB, GLTF, or GIB file."),
 });
 
 export default function NewProjectPage() {
@@ -37,6 +41,7 @@ export default function NewProjectPage() {
     defaultValues: {
       name: "",
       description: "",
+      modelFile: undefined,
     },
   });
 
@@ -46,6 +51,7 @@ export default function NewProjectPage() {
         name: values.name.trim(),
         description: (values.description ?? "").trim(),
         folderId: currentFolderId,
+        modelFile: values.modelFile?.[0] ?? null,
       });
       navigate(`/project/${project.id}`);
     } catch {
@@ -126,6 +132,27 @@ export default function NewProjectPage() {
                   </p>
                 )}
               </div>
+
+              <div>
+                <label htmlFor="project-model" className="block text-sm font-semibold text-[#171717]">
+                  3D model
+                </label>
+                <input
+                  id="project-model"
+                  type="file"
+                  accept=".glb,.gltf,.gib,model/gltf-binary,model/gltf+json"
+                  className="mt-2 block w-full rounded-[6px] border border-[#b8b0a5] bg-[#efefef] px-3 py-2 text-sm text-[#141414] file:mr-3 file:rounded-[5px] file:border-0 file:bg-[#141414] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[#efefef] hover:file:opacity-90 focus:outline-none"
+                  aria-invalid={errors.modelFile ? "true" : "false"}
+                  aria-describedby={errors.modelFile ? "project-model-error" : undefined}
+                  disabled={isSubmitting}
+                  {...register("modelFile")}
+                />
+                {errors.modelFile && (
+                  <p id="project-model-error" className="mt-2 text-sm text-[#8a2e20]">
+                    {errors.modelFile.message}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-[#d2cbc2] pt-4">
@@ -148,4 +175,10 @@ export default function NewProjectPage() {
       </main>
     </div>
   );
+}
+
+function isSupportedModelFile(file) {
+  if (!file) return true;
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return ["glb", "gltf", "gib"].includes(extension);
 }

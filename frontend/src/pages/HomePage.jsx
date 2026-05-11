@@ -96,15 +96,15 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="mt-1 w-full max-w-[1040px] border-b border-[#b8b0a5]" />
+          <div className="mt-1 w-full border-b border-[#b8b0a5]" />
 
           {error && (
-            <div className="mt-5 max-w-[1040px] rounded-[7px] border border-[#b16858] bg-[#f4dfd9] px-3 py-2 text-sm text-[#5f2118]">
+            <div className="mt-5 w-full rounded-[7px] border border-[#b16858] bg-[#f4dfd9] px-3 py-2 text-sm text-[#5f2118]">
               {error}
             </div>
           )}
 
-          <div className="mt-8 grid w-full max-w-[1040px] grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {folders.map((folder) => (
               <button
                 key={folder.id}
@@ -120,14 +120,14 @@ export default function HomePage() {
 
           <h2 className="mb-3 mt-12 text-[1.4rem] font-medium text-[#141414] md:text-[2rem]">Files</h2>
 
-          <div className="grid w-full max-w-[1040px] grid-cols-2 gap-x-3 gap-y-2 border-b border-[#b8b0a5] px-2 pb-2 text-sm text-[#171717] md:grid-cols-[1.6fr_0.28fr_0.65fr_0.65fr] md:gap-6 md:text-[0.98rem]">
+          <div className="grid w-full grid-cols-2 gap-x-3 gap-y-2 border-b border-[#b8b0a5] px-2 pb-2 text-sm text-[#171717] md:grid-cols-[1.6fr_0.28fr_0.65fr_0.65fr] md:gap-6 md:text-[0.98rem]">
             <span>Named</span>
             <span>Time</span>
             <span>Modified By</span>
             <span>Owned By</span>
           </div>
 
-          <div className="w-full max-w-[1040px]">
+          <div className="w-full">
             {projects.map((project) => (
               <Link
                 key={project.id}
@@ -146,13 +146,13 @@ export default function HomePage() {
           </div>
 
           {!isLoading && !error && !hasContents && (
-            <div className="mt-10 max-w-[1040px] rounded-[7px] border border-dashed border-[#b8b0a5] px-5 py-8 text-center text-[#5f584d]">
+            <div className="mt-10 w-full rounded-[7px] border border-dashed border-[#b8b0a5] px-5 py-8 text-center text-[#5f584d]">
               This folder is empty.
             </div>
           )}
 
           {isLoading && (
-            <div className="mt-10 max-w-[1040px] rounded-[7px] border border-[#d2cbc2] px-5 py-8 text-center text-[#5f584d]">
+            <div className="mt-10 w-full rounded-[7px] border border-[#d2cbc2] px-5 py-8 text-center text-[#5f584d]">
               Loading...
             </div>
           )}

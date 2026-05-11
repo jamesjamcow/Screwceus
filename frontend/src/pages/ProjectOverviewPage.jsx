@@ -1,19 +1,19 @@
-import { useMemo, useRef, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Sphere } from "@react-three/drei";
+import { Center, OrbitControls, Sphere, useGLTF } from "@react-three/drei";
 
 import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
 import { createPartRecords } from "../lib/partSchema";
-
-const MODEL_FILE_PLACEHOLDER = "src/assets/models/project-model.glb";
+import { resolveApiAssetUrl } from "../lib/axios";
 
 export default function ProjectOverviewPage() {
   const { projectId } = useParams();
   const { project } = useOutletContext();
   const projectName = project.name;
+  const modelUrl = resolveApiAssetUrl(project.model_url);
   const [parts, setParts] = useState(() =>
     createPartRecords().map((part, index) => ({
       ...part,
@@ -95,44 +95,42 @@ export default function ProjectOverviewPage() {
         <section className="mt-10 md:mt-12">
           <div className="mx-auto w-full max-w-[620px] rounded-[6px] border border-[#b8b0a5] bg-[#eceae6] p-2 shadow-[0_1px_0_rgba(0,0,0,0.08)]">
             <div className="h-[250px] w-full overflow-hidden rounded-[4px] border border-[#c8c0b5] bg-[#d8d3cb] md:h-[340px]">
-              <Canvas camera={{ position: [2.6, 1.6, 2.5], fov: 45 }} onPointerMissed={handleClearSelection}>
-                <ambientLight intensity={0.7} />
-                <directionalLight position={[3, 3, 2]} intensity={1.2} />
-                <directionalLight position={[-3, 2, -1]} intensity={0.65} />
-                <group onClick={handleModelClick}>
-                  <mesh rotation={[0.28, 0.58, 0.08]}>
-                    <cylinderGeometry args={[0.35, 0.35, 1.4, 6]} />
-                    <meshStandardMaterial color="#90989f" metalness={0.7} roughness={0.34} />
-                  </mesh>
-                  <mesh position={[0, 0.84, 0]} rotation={[0.2, 0.58, 0.08]}>
-                    <cylinderGeometry args={[0.57, 0.57, 0.25, 6]} />
-                    <meshStandardMaterial color="#a5adb5" metalness={0.75} roughness={0.31} />
-                  </mesh>
-                </group>
-                {markers.map((part) => (
-                  <Sphere
-                    key={part.id}
-                    args={[0.08, 18, 18]}
-                    position={part.point}
-                    onClick={(event) => {
-                      modelClickRef.current = true;
-                      event.stopPropagation();
-                      handlePartSelect(part.id);
-                    }}
-                  >
-                    <meshStandardMaterial color="#d92727" />
-                  </Sphere>
-                ))}
-                <OrbitControls enablePan={false} enableDamping dampingFactor={0.08} minDistance={1.7} maxDistance={5.2} />
-              </Canvas>
+              {modelUrl ? (
+                <Canvas camera={{ position: [2.6, 1.6, 2.5], fov: 45 }} onPointerMissed={handleClearSelection}>
+                  <ambientLight intensity={0.7} />
+                  <directionalLight position={[3, 3, 2]} intensity={1.2} />
+                  <directionalLight position={[-3, 2, -1]} intensity={0.65} />
+                  <Suspense fallback={null}>
+                    <UploadedProjectModel url={modelUrl} onClick={handleModelClick} />
+                  </Suspense>
+                  {markers.map((part) => (
+                    <Sphere
+                      key={part.id}
+                      args={[0.08, 18, 18]}
+                      position={part.point}
+                      onClick={(event) => {
+                        modelClickRef.current = true;
+                        event.stopPropagation();
+                        handlePartSelect(part.id);
+                      }}
+                    >
+                      <meshStandardMaterial color="#d92727" />
+                    </Sphere>
+                  ))}
+                  <OrbitControls enablePan={false} enableDamping dampingFactor={0.08} minDistance={1.7} maxDistance={5.2} />
+                </Canvas>
+              ) : (
+                <div className="flex h-full items-center justify-center px-5 text-center text-sm text-[#5d5d5d]">
+                  Upload a GLB, GLTF, or GIB file when creating the project to view it here.
+                </div>
+              )}
             </div>
             <p className="mt-2 text-[0.82rem] text-[#5d5d5d]">
-              {selectedPartId === null
-                ? "Select a card below, then click the 3D model to store a point."
-                : `Selected card ${selectedPartId}. Click the model to update its point.`}
-            </p>
-            <p className="mt-2 text-right text-[0.78rem] text-[#5d5d5d]">
-              3D model placeholder: <span className="font-medium">{MODEL_FILE_PLACEHOLDER}</span>
+              {!modelUrl
+                ? "No project model is attached yet."
+                : selectedPartId === null
+                  ? "Select a card below, then click the 3D model to store a point."
+                  : `Selected card ${selectedPartId}. Click the model to update its point.`}
             </p>
           </div>
         </section>
@@ -162,6 +160,16 @@ export default function ProjectOverviewPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+function UploadedProjectModel({ url, onClick }) {
+  const gltf = useGLTF(url);
+
+  return (
+    <Center>
+      <primitive object={gltf.scene} onClick={onClick} />
+    </Center>
   );
 }
 

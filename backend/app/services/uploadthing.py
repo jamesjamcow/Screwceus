@@ -16,7 +16,7 @@ class UploadThingFile:
     key: str
 
 
-async def upload_image_to_uploadthing(
+async def upload_file_to_uploadthing(
     *,
     content: bytes,
     filename: str,
@@ -77,6 +77,15 @@ async def upload_image_to_uploadthing(
         )
 
     return UploadThingFile(name=filename, url=file_url, key=file_key or "")
+
+
+async def upload_image_to_uploadthing(
+    *,
+    content: bytes,
+    filename: str,
+    content_type: str,
+) -> UploadThingFile:
+    return await upload_file_to_uploadthing(content=content, filename=filename, content_type=content_type)
 
 
 def _resolve_uploadthing_api_key() -> str:

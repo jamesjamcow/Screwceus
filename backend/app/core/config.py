@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str = Field(..., alias="DATABASE_URL")
     allowed_origins_raw: str = Field(default="http://localhost:5173", alias="ALLOWED_ORIGINS")
     max_image_upload_bytes: int = Field(default=10 * 1024 * 1024, alias="MAX_IMAGE_UPLOAD_BYTES")
+    max_model_upload_bytes: int = Field(default=50 * 1024 * 1024, alias="MAX_MODEL_UPLOAD_BYTES")
     uploadthing_token: str = Field(default="", alias="UPLOADTHING_TOKEN")
     uploadthing_api_url: str = Field(default="https://api.uploadthing.com", alias="UPLOADTHING_API_URL")
     uploadthing_api_version: str = Field(default="7.7.4", alias="UPLOADTHING_API_VERSION")

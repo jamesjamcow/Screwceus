@@ -1,8 +1,10 @@
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlmodel import Session, select
 
+from app.core.config import settings
 from app.core.security import get_current_user_id
 from app.db.session import get_session
 from app.models.folder import Folder
@@ -21,8 +23,17 @@ from app.schemas.project_file import (
     ProjectScreenshotCreate,
     ProjectScreenshotRead,
 )
+from app.services.uploadthing import upload_file_to_uploadthing
 
 router = APIRouter()
+
+ALLOWED_MODEL_EXTENSIONS = {".glb", ".gltf", ".gib"}
+ALLOWED_MODEL_TYPES = {
+    "application/json",
+    "application/octet-stream",
+    "model/gltf-binary",
+    "model/gltf+json",
+}
 
 # ---------------------------------------------------------------------------
 # Project files
@@ -73,7 +84,49 @@ def create_project_file(
         folder_id=payload.folder_id,
         name=payload.name,
         description=payload.description,
+        model_url="",
+        model_filename="",
+        model_file_key="",
     )
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
+
+
+@router.post("/{project_id}/model", response_model=ProjectFileRead)
+async def upload_project_model(
+    project_id: int,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+    session: Session = Depends(get_session),
+) -> ProjectFile:
+    project = _require_project(project_id, user_id, session)
+
+    extension = Path(file.filename or "").suffix.lower()
+    content_type = file.content_type or "application/octet-stream"
+    if extension not in ALLOWED_MODEL_EXTENSIONS or content_type not in ALLOWED_MODEL_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported 3D model type")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty upload")
+
+    if len(contents) > settings.max_model_upload_bytes:
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="3D model is too large")
+
+    filename = file.filename or f"project-model{extension or '.glb'}"
+    uploaded_file = await upload_file_to_uploadthing(
+        content=contents,
+        filename=filename,
+        content_type=content_type,
+    )
+
+    project.model_url = uploaded_file.url
+    project.model_filename = uploaded_file.name
+    project.model_file_key = uploaded_file.key
+    project.updated_at = datetime.utcnow()
+
     session.add(project)
     session.commit()
     session.refresh(project)

@@ -8,6 +8,7 @@ import {
   listFolders,
   listFolderTree,
   listProjectFiles,
+  uploadProjectModel,
 } from "../services/driveService";
 
 function getErrorMessage(error, fallback) {
@@ -80,9 +81,22 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload) => authedFetch((token) => createProjectFile(token, payload)),
-    onSuccess: () => {
+    mutationFn: (payload) =>
+      authedFetch(async (token) => {
+        const project = await createProjectFile(token, payload);
+
+        if (!payload.modelFile) {
+          return project;
+        }
+
+        return uploadProjectModel(token, {
+          projectId: project.id,
+          file: payload.modelFile,
+        });
+      }),
+    onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["driveContents"] });
+      queryClient.setQueryData(["project", String(project.id)], project);
     },
   });
 }

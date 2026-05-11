@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 
 import PartCard from "../components/parts/PartCard";
@@ -39,7 +39,7 @@ export default function ProjectPage() {
     uploadInputRef.current?.click();
   };
 
-  const storeProjectImage = async (file, { sourceType, title, caption }) => {
+  const storeProjectImage = useCallback(async (file, { sourceType, title, caption }) => {
     setDocumentError("");
     setIsStoringDocument(true);
 
@@ -70,7 +70,7 @@ export default function ProjectPage() {
     } finally {
       setIsStoringDocument(false);
     }
-  };
+  }, [authedFetch, navigate, projectId, targetProjectId]);
 
   const handleDocumentSelected = async (event) => {
     const selectedFile = event.target.files?.[0];
@@ -125,6 +125,35 @@ export default function ProjectPage() {
       setDocumentError("Could not read the clipboard. Check browser permissions and try again.");
     }
   };
+
+  const handlePagePaste = useCallback(
+    async (event) => {
+      if (isStoringDocument) {
+        return;
+      }
+
+      const file = findFirstPastedImageFile(event.clipboardData);
+      if (!file) {
+        return;
+      }
+
+      event.preventDefault();
+      await storeProjectImage(file, {
+        sourceType: "clipboard",
+        title: "Pasted image",
+        caption: "Pasted image",
+      });
+    },
+    [isStoringDocument, storeProjectImage],
+  );
+
+  useEffect(() => {
+    window.addEventListener("paste", handlePagePaste);
+
+    return () => {
+      window.removeEventListener("paste", handlePagePaste);
+    };
+  }, [handlePagePaste]);
 
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
@@ -230,6 +259,34 @@ async function findFirstClipboardImageBlob(clipboardItems) {
   }
 
   return null;
+}
+
+function findFirstPastedImageFile(clipboardData) {
+  if (!clipboardData) {
+    return null;
+  }
+
+  const pastedFile = Array.from(clipboardData.files).find((file) => file.type.startsWith("image/"));
+  if (pastedFile) {
+    return pastedFile;
+  }
+
+  const imageItem = Array.from(clipboardData.items).find((item) => item.type.startsWith("image/"));
+  if (!imageItem) {
+    return null;
+  }
+
+  const file = imageItem.getAsFile();
+  if (!file) {
+    return null;
+  }
+
+  return file.name
+    ? file
+    : new File([file], filenameForMimeType(file.type), {
+        type: file.type,
+        lastModified: file.lastModified,
+      });
 }
 
 async function compressImageForUpload(file) {
