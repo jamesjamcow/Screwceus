@@ -85,6 +85,38 @@ export async function uploadProjectModel(token, { projectId, file }) {
   return response.data;
 }
 
+export async function listParts(token) {
+  const response = await api.get("/v1/parts/", {
+    headers: authHeaders(token),
+  });
+
+  return response.data;
+}
+
+export async function listProjectParts(token, { projectId }) {
+  const response = await api.get(`/v1/projects/${projectId}/parts`, {
+    headers: authHeaders(token),
+  });
+
+  return response.data;
+}
+
+export async function updateProjectPart(token, { projectId, linkId, values }) {
+  const response = await api.patch(`/v1/projects/${projectId}/parts/${linkId}`, values, {
+    headers: authHeaders(token),
+  });
+
+  return response.data;
+}
+
+export async function createProjectPartEntry(token, { projectId, values }) {
+  const response = await api.post(`/v1/projects/${projectId}/part-entry`, values, {
+    headers: authHeaders(token),
+  });
+
+  return response.data;
+}
+
 export async function uploadPhoto(token, { file, title, projectId, caption, sortOrder }) {
   const formData = new FormData();
   formData.append("file", file);

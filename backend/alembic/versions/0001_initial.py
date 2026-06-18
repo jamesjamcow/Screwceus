@@ -134,6 +134,7 @@ def upgrade() -> None:
         sa.Column("project_file_id", sa.Integer(), nullable=False),
         sa.Column("part_id", sa.Integer(), nullable=False),
         sa.Column("owner_id", sa.String(length=255), nullable=False),
+        sa.Column("quantity_needed", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("point", sa.JSON(), nullable=True),
         sa.Column("notes", sa.String(length=2000), nullable=False, server_default=""),
         sa.Column("created_at", sa.DateTime(), nullable=False),

@@ -1,7 +1,9 @@
 import base64
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException, status
@@ -24,9 +26,12 @@ async def upload_file_to_uploadthing(
 ) -> UploadThingFile:
     api_key = _resolve_uploadthing_api_key()
     if not api_key:
+        if settings.app_env == "development":
+            return _save_local_upload(content=content, filename=filename)
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="UploadThing is not configured",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="File uploads are not configured",
         )
 
     prepare_payload = {
@@ -90,7 +95,13 @@ async def upload_image_to_uploadthing(
 
 def _resolve_uploadthing_api_key() -> str:
     token_data = _decode_uploadthing_token()
-    return str(token_data.get("apiKey") or token_data.get("api_key") or token_data.get("key") or "")
+    return str(
+        token_data.get("apiKey")
+        or token_data.get("api_key")
+        or token_data.get("key")
+        or settings.uploadthing_api_key
+        or ""
+    )
 
 
 def _decode_uploadthing_token() -> dict[str, Any]:
@@ -114,6 +125,28 @@ def _ufs_url_for_key(file_key: str) -> str:
         return f"https://{app_id}.ufs.sh/f/{file_key}"
 
     return f"https://utfs.io/f/{file_key}"
+
+
+def _save_local_upload(*, content: bytes, filename: str) -> UploadThingFile:
+    upload_dir = Path(settings.local_upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = _safe_filename(filename)
+    stored_name = f"{uuid4().hex}-{safe_name}"
+    upload_path = upload_dir / stored_name
+    upload_path.write_bytes(content)
+
+    return UploadThingFile(
+        name=filename,
+        url=f"/uploads/{stored_name}",
+        key=stored_name,
+    )
+
+
+def _safe_filename(filename: str) -> str:
+    safe_name = Path(filename).name.strip().replace(" ", "-")
+    safe_name = "".join(character for character in safe_name if character.isalnum() or character in ".-_")
+    return safe_name or "upload"
 
 
 def _raise_uploadthing_error(response: httpx.Response) -> None:

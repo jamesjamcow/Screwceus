@@ -101,6 +101,25 @@ export function useCreateProject() {
   });
 }
 
+export function useUploadProjectModel() {
+  const { authedFetch } = useAuthedApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, file }) =>
+      authedFetch((token) =>
+        uploadProjectModel(token, {
+          projectId,
+          file,
+        }),
+      ),
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ["driveContents"] });
+      queryClient.setQueryData(["project", String(project.id)], project);
+    },
+  });
+}
+
 export function getDriveErrorMessage(error) {
   return getErrorMessage(error, "Could not load folders and files.");
 }
@@ -111,6 +130,10 @@ export function getCreateFolderErrorMessage(error) {
 
 export function getCreateProjectErrorMessage(error) {
   return getErrorMessage(error, "Could not create project file.");
+}
+
+export function getUploadProjectModelErrorMessage(error) {
+  return getErrorMessage(error, "Could not upload 3D model.");
 }
 
 export function getProjectErrorMessage(error) {

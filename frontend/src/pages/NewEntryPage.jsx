@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Image as KonvaImage, Layer, Line, Stage } from "react-konva";
-import { useLocation, useOutletContext } from "react-router-dom";
+import { useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 
 import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
+import { useAuthedApi } from "../hooks/useAuthedApi";
 import { PART_FIELDS, PART_FORM_DEFAULT_VALUES, partFormSchema } from "../lib/partSchema";
+import { toPathSafeProjectId } from "../lib/projectRouting";
+import { createProjectPartEntry } from "../services/driveService";
 
 const FIELD_CLASS =
   "h-10 w-full rounded-[4px] border bg-[#efefef] px-3 text-[1.55rem] text-[#141414] focus:outline-none md:text-[1.12rem]";
@@ -23,8 +26,12 @@ const ERASER_STROKE = {
 export default function NewEntryPage() {
   const { project } = useOutletContext();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { projectId } = useParams();
+  const { authedFetch } = useAuthedApi();
 
   const projectName = project.name;
+  const targetProjectId = useMemo(() => toPathSafeProjectId(projectId), [projectId]);
   const documentSource = useMemo(() => {
     const state = location.state ?? {};
     const name = state.documentName ?? state.uploadedFileName ?? "";
@@ -41,6 +48,8 @@ export default function NewEntryPage() {
     };
   }, [location.state]);
   const [submittedEntry, setSubmittedEntry] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const [annotationState, setAnnotationState] = useState({ stageSize: { width: 0, height: 0 }, lines: [] });
 
   const {
     register,
@@ -52,8 +61,41 @@ export default function NewEntryPage() {
     defaultValues: PART_FORM_DEFAULT_VALUES,
   });
 
-  const handleValidSubmit = (values) => {
-    setSubmittedEntry(values);
+  const handleValidSubmit = async (values) => {
+    setSubmitError("");
+
+    try {
+      const projectPart = await authedFetch((token) =>
+        createProjectPartEntry(token, {
+          projectId: project.id,
+          values: {
+            name: values.name,
+            type: values.type,
+            dimensions: values.dimensions,
+            notes: values.notes,
+            quantity_needed: values.quantityNeeded,
+            source_image_url: documentSource.url,
+            annotation_json: buildAnnotationJson(documentSource, annotationState),
+          },
+        }),
+      );
+      setSubmittedEntry(projectPart);
+    } catch (error) {
+      setSubmitError(error?.response?.data?.detail ?? "Could not save this entry.");
+    }
+  };
+
+  const handleOpenDesignPage = () => {
+    navigate(`/project/${targetProjectId}`);
+  };
+
+  const handleSavedEntryKeyDown = (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    handleOpenDesignPage();
   };
 
   return (
@@ -62,14 +104,13 @@ export default function NewEntryPage() {
 
       <main className="mx-auto w-full max-w-[1260px] px-4 pb-10 pt-5 md:px-7 md:pt-7">
         <div className="mb-4 text-[1.35rem] md:text-[1.05rem]">
-          <span className="font-normal">SpaceX/</span>
           <span className="font-semibold">{projectName}</span>
         </div>
 
         <section className="grid gap-6 lg:grid-cols-[1.35fr_0.88fr]">
           <article className="overflow-hidden border border-[#c6c1b8] bg-[#e6e6e6]">
             <CanvasToolbar />
-            <SketchCanvas documentSource={documentSource} />
+            <SketchCanvas documentSource={documentSource} onAnnotationChange={setAnnotationState} />
           </article>
 
           <article className="bg-[#efefef]">
@@ -120,27 +161,59 @@ export default function NewEntryPage() {
                       placeholder={field.placeholder}
                       aria-invalid={Boolean(error)}
                       className={fieldClassName(Boolean(error))}
+                      list={field.options ? `${field.name}-options` : undefined}
                     />
+                    {field.options ? (
+                      <datalist id={`${field.name}-options`}>
+                        {field.options.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </datalist>
+                    ) : null}
                   </Field>
                 );
               })}
 
+              <Field label="How Many" error={errors.quantityNeeded?.message}>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  {...register("quantityNeeded")}
+                  aria-invalid={Boolean(errors.quantityNeeded)}
+                  className={fieldClassName(Boolean(errors.quantityNeeded))}
+                />
+              </Field>
+
               <div className="flex items-center justify-between gap-4 pt-2">
-                <p className="text-sm text-[#54504a]">Validated against the shared part schema.</p>
+                <p className="text-sm text-[#54504a]">
+                  {submitError || "Validated against the shared part schema."}
+                </p>
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="rounded border border-[#6f6d6a] bg-[#141414] px-4 py-2 text-sm text-[#efefef] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Save Entry
+                  {isSubmitting ? "Saving..." : "Save Entry"}
                 </button>
               </div>
             </form>
 
             {submittedEntry ? (
               <section className="mt-5">
-                <h2 className="font-semibold">Latest Saved Draft</h2>
-                <PartCard part={submittedEntry} className="mt-2 border-[#c6c1b8] bg-[#e6e6e6]" />
+                <h2 className="font-semibold">Latest Saved Entry</h2>
+                <p className="mt-1 text-sm text-[#54504a]">Quantity: {submittedEntry.quantity_needed}</p>
+                <PartCard
+                  part={submittedEntry.part}
+                  imageUrl={submittedEntry.source_image_url}
+                  annotationJson={submittedEntry.annotation_json}
+                  className="mt-2 border-[#c6c1b8] bg-[#e6e6e6]"
+                  onClick={handleOpenDesignPage}
+                  onKeyDown={handleSavedEntryKeyDown}
+                  aria-label="Open design page"
+                />
               </section>
             ) : null}
           </article>
@@ -169,7 +242,7 @@ function CanvasToolbar() {
   );
 }
 
-function SketchCanvas({ documentSource }) {
+function SketchCanvas({ documentSource, onAnnotationChange }) {
   const containerRef = useRef(null);
   const isDrawingRef = useRef(false);
   const [activeTool, setActiveTool] = useState("draw");
@@ -245,6 +318,13 @@ function SketchCanvas({ documentSource }) {
     setLines([]);
   };
 
+  useEffect(() => {
+    onAnnotationChange({
+      stageSize,
+      lines,
+    });
+  }, [lines, onAnnotationChange, stageSize]);
+
   return (
     <div className="px-2 pb-2 md:px-3 md:pb-3">
       <div className="mb-2 flex items-center gap-2 border-b border-[#cbc4b8] py-2">
@@ -310,6 +390,38 @@ function SketchCanvas({ documentSource }) {
       </div>
     </div>
   );
+}
+
+function buildAnnotationJson(documentSource, annotationState) {
+  if (!documentSource.url || !documentSource.mimeType.startsWith("image/")) {
+    return null;
+  }
+
+  const width = annotationState?.stageSize?.width ?? 0;
+  const height = annotationState?.stageSize?.height ?? 0;
+  const lines = Array.isArray(annotationState?.lines) ? annotationState.lines : [];
+
+  if (width <= 0 || height <= 0 || lines.length === 0) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    lines: lines
+      .filter((line) => Array.isArray(line.points) && line.points.length >= 2)
+      .map((line) => ({
+        tool: line.tool,
+        color: line.tool === "erase" ? undefined : DRAW_STROKE.color,
+        strokeWidth:
+          line.tool === "erase"
+            ? ERASER_STROKE.width / Math.max(width, height)
+            : DRAW_STROKE.width / Math.max(width, height),
+        points: line.points.map((point, index) => {
+          const size = index % 2 === 0 ? width : height;
+          return Number((point / size).toFixed(4));
+        }),
+      })),
+  };
 }
 
 function SelectField({ name, label, control, error, options }) {

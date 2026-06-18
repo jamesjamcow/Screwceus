@@ -3,12 +3,11 @@ import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 
 import PartCard from "../components/parts/PartCard";
 import HomeTopNav from "../components/home/HomeTopNav";
-import { createPartRecords } from "../lib/partSchema";
 import ProjectMiniNav from "../components/project/ProjectMiniNav";
 import { toPathSafeProjectId } from "../lib/projectRouting";
 import { resolveApiAssetUrl } from "../lib/axios";
 import { useAuthedApi } from "../hooks/useAuthedApi";
-import { uploadPhoto } from "../services/driveService";
+import { listProjectParts, uploadPhoto } from "../services/driveService";
 
 const IMAGE_COMPRESSION_OPTIONS = {
   fileType: "image/webp",
@@ -25,10 +24,12 @@ export default function ProjectPage() {
   const { authedFetch } = useAuthedApi();
   const [documentError, setDocumentError] = useState("");
   const [isStoringDocument, setIsStoringDocument] = useState(false);
+  const [parts, setParts] = useState([]);
+  const [partsError, setPartsError] = useState("");
+  const [isLoadingParts, setIsLoadingParts] = useState(true);
 
   const projectName = project.name;
   const targetProjectId = useMemo(() => toPathSafeProjectId(projectId), [projectId]);
-  const parts = useMemo(() => createPartRecords(), []);
 
   const handleStartEntry = () => {
     navigate(`/project/${targetProjectId}/new-entry`);
@@ -155,6 +156,36 @@ export default function ProjectPage() {
     };
   }, [handlePagePaste]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProjectParts() {
+      setIsLoadingParts(true);
+      setPartsError("");
+
+      try {
+        const records = await authedFetch((token) => listProjectParts(token, { projectId }));
+        if (!ignore) {
+          setParts(records);
+        }
+      } catch {
+        if (!ignore) {
+          setPartsError("Could not load parts.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingParts(false);
+        }
+      }
+    }
+
+    loadProjectParts();
+
+    return () => {
+      ignore = true;
+    };
+  }, [authedFetch, projectId]);
+
   return (
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
       <HomeTopNav />
@@ -237,8 +268,19 @@ export default function ProjectPage() {
           </div>
 
           <div className="mt-6 space-y-3">
-            {parts.map((part) => (
-              <PartCard key={part.id} part={part} badge={`#${part.id}`} />
+            {isLoadingParts ? <p className="text-sm text-[#5f584d]">Loading parts...</p> : null}
+            {partsError ? <p className="text-sm text-[#9d3434]">{partsError}</p> : null}
+            {!isLoadingParts && !partsError && parts.length === 0 ? (
+              <p className="text-sm text-[#5f584d]">No parts have been linked to this project yet.</p>
+            ) : null}
+            {parts.map((projectPart) => (
+              <PartCard
+                key={projectPart.id}
+                part={projectPart.part}
+                imageUrl={projectPart.source_image_url}
+                annotationJson={projectPart.annotation_json}
+                footer={<span>Needed: {projectPart.quantity_needed}</span>}
+              />
             ))}
           </div>
         </section>

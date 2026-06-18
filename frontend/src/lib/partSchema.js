@@ -8,8 +8,6 @@ export const PART_TYPE_OPTIONS = [
   { value: "bracket", label: "Bracket" },
 ];
 
-const PART_TYPE_VALUES = PART_TYPE_OPTIONS.map((option) => option.value);
-
 export const PART_FIELDS = [
   {
     name: "name",
@@ -20,7 +18,8 @@ export const PART_FIELDS = [
   {
     name: "type",
     label: "Type",
-    input: "select",
+    input: "text",
+    placeholder: "fastener",
     options: PART_TYPE_OPTIONS,
   },
   {
@@ -42,15 +41,12 @@ export const PART_FORM_DEFAULT_VALUES = {
   type: "",
   dimensions: "",
   notes: "",
+  quantityNeeded: 1,
 };
 
 export const partFormSchema = z.object({
   name: z.string().trim().min(1, "Enter a name."),
-  type: z
-    .string()
-    .trim()
-    .min(1, "Choose a type.")
-    .refine((value) => PART_TYPE_VALUES.includes(value), "Choose a type."),
+  type: z.string().trim().min(1, "Enter a type."),
   dimensions: z
     .string()
     .trim()
@@ -58,6 +54,7 @@ export const partFormSchema = z.object({
     .refine(isJsonObjectString, "Enter a valid JSON object.")
     .transform((value) => JSON.parse(value)),
   notes: z.string().trim(),
+  quantityNeeded: z.coerce.number().int("Enter a whole number.").min(1, "Enter at least 1."),
 });
 
 const PART_FIXTURES = [
