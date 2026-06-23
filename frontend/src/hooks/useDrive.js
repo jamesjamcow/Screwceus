@@ -8,6 +8,8 @@ import {
   listFolders,
   listFolderTree,
   listProjectFiles,
+  listParts,
+  listTeams,
   uploadProjectModel,
 } from "../services/driveService";
 
@@ -32,11 +34,11 @@ export function normalizeProjectId(projectId) {
 }
 
 export function useDriveContents(folderId) {
-  const { authedFetch, isAuthReady } = useAuthedApi();
+  const { authedFetch, isOrganizationReady, organizationId } = useAuthedApi();
 
   return useQuery({
-    queryKey: ["driveContents", folderId ?? "root"],
-    enabled: isAuthReady,
+    queryKey: ["driveContents", organizationId, folderId ?? "root"],
+    enabled: isOrganizationReady,
     staleTime: 30_000,
     queryFn: () =>
       authedFetch(async (token) => {
@@ -52,15 +54,36 @@ export function useDriveContents(folderId) {
 }
 
 export function useProject(projectId) {
-  const { authedFetch, isAuthReady } = useAuthedApi();
+  const { authedFetch, isOrganizationReady, organizationId } = useAuthedApi();
   const normalizedProjectId = normalizeProjectId(projectId);
 
   return useQuery({
-    queryKey: ["project", normalizedProjectId ?? "invalid"],
-    enabled: isAuthReady && Boolean(normalizedProjectId),
+    queryKey: ["project", organizationId, normalizedProjectId ?? "invalid"],
+    enabled: isOrganizationReady && Boolean(normalizedProjectId),
     staleTime: 30_000,
     retry: (failureCount, error) => error?.response?.status !== 404 && failureCount < 1,
     queryFn: () => authedFetch((token) => getProjectFile(token, normalizedProjectId)),
+  });
+}
+
+export function useWorkspaceHome() {
+  const { authedFetch, isOrganizationReady, organizationId } = useAuthedApi();
+
+  return useQuery({
+    queryKey: ["workspaceHome", organizationId],
+    enabled: isOrganizationReady,
+    staleTime: 20_000,
+    queryFn: () =>
+      authedFetch(async (token) => {
+        const [projects, parts, teams, folders] = await Promise.all([
+          listProjectFiles(token),
+          listParts(token),
+          listTeams(token),
+          listFolderTree(token),
+        ]);
+
+        return { projects, parts, teams, folders };
+      }),
   });
 }
 
@@ -72,6 +95,7 @@ export function useCreateFolder() {
     mutationFn: (payload) => authedFetch((token) => createFolder(token, payload)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["driveContents"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceHome"] });
     },
   });
 }
@@ -94,9 +118,9 @@ export function useCreateProject() {
           file: payload.modelFile,
         });
       }),
-    onSuccess: (project) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["driveContents"] });
-      queryClient.setQueryData(["project", String(project.id)], project);
+      queryClient.invalidateQueries({ queryKey: ["workspaceHome"] });
     },
   });
 }

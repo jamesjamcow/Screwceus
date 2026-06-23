@@ -8,6 +8,7 @@ class ProjectFile(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     owner_id: str = Field(index=True, max_length=255)
+    organization_id: str = Field(foreign_key="organization.clerk_id", index=True, max_length=255)
     folder_id: int | None = Field(default=None, foreign_key="folder.id", index=True)
     name: str = Field(max_length=255)
     description: str = Field(default="", max_length=2000)

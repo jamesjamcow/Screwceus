@@ -1,178 +1,197 @@
-import { useMemo } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useOrganization } from "@clerk/clerk-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { ChevronRightIcon, FolderIcon } from "../components/home/HomeIcons";
+import { EmptyStateIcon, NavIcon } from "../components/home/HomeIcons";
 import HomeSidebar from "../components/home/HomeSidebar";
-import HomeTopNav from "../components/home/HomeTopNav";
-import { getDriveErrorMessage, useDriveContents } from "../hooks/useDrive";
-import { getFolderSearchParam } from "../lib/folderRouting";
+import IssuesDatabase from "../components/issues/IssuesDatabase";
+import { createTeamIssues } from "../components/issues/issueData";
+import ProjectsTable from "../components/home/ProjectsTable";
+import { getDriveErrorMessage, useWorkspaceHome } from "../hooks/useDrive";
 
 const EMPTY_ITEMS = [];
 
-function getFolderPath(tree, folderId) {
-  if (!folderId) return [];
-
-  const visit = (nodes, trail) => {
-    for (const node of nodes) {
-      const nextTrail = [...trail, node];
-      if (node.id === folderId) {
-        return nextTrail;
-      }
-
-      const result = visit(node.children ?? [], nextTrail);
-      if (result.length) {
-        return result;
-      }
-    }
-
-    return [];
-  };
-
-  return visit(tree, []);
-}
-
-function formatUpdatedAt(value) {
-  if (!value) return "";
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
+const VIEW_TITLES = {
+  inbox: "Inbox",
+  "my-issues": "My issues",
+  projects: "Projects",
+  inventory: "Inventory",
+  more: "More",
+};
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { organization } = useOrganization();
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentFolderId = getFolderSearchParam(searchParams);
-  const driveQuery = useDriveContents(currentFolderId);
+  const workspaceQuery = useWorkspaceHome();
+  const activeView = searchParams.get("view") || "projects";
+  const activeTeamId = searchParams.get("team");
 
-  const folders = driveQuery.data?.folders ?? EMPTY_ITEMS;
-  const projects = driveQuery.data?.projects ?? EMPTY_ITEMS;
-  const folderTree = driveQuery.data?.folderTree ?? EMPTY_ITEMS;
+  const projects = workspaceQuery.data?.projects ?? EMPTY_ITEMS;
+  const parts = workspaceQuery.data?.parts ?? EMPTY_ITEMS;
+  const teams = workspaceQuery.data?.teams ?? EMPTY_ITEMS;
+  const folders = workspaceQuery.data?.folders ?? EMPTY_ITEMS;
+  const currentTeam = teams.find((team) => String(team.id) === String(activeTeamId));
+  const error = workspaceQuery.error ? getDriveErrorMessage(workspaceQuery.error) : "";
 
-  const folderPath = useMemo(() => getFolderPath(folderTree, currentFolderId), [folderTree, currentFolderId]);
-  const error = (driveQuery.error && getDriveErrorMessage(driveQuery.error)) || "";
+  function selectView(view, teamId = null) {
+    if (view === "new-project") {
+      navigate("/projects/new");
+      return;
+    }
 
-  function openFolder(folderId) {
-    setSearchParams({ folder: String(folderId) });
+    const next = new URLSearchParams();
+    next.set("view", view);
+    if (teamId) next.set("team", String(teamId));
+    setSearchParams(next);
   }
 
-  function openRoot() {
-    setSearchParams({});
-  }
-
-  function handleNewFolder() {
-    navigate(currentFolderId ? `/folders/new?folder=${encodeURIComponent(String(currentFolderId))}` : "/folders/new");
-  }
-
-  function handleNewProject() {
-    navigate(currentFolderId ? `/projects/new?folder=${encodeURIComponent(String(currentFolderId))}` : "/projects/new");
-  }
-
-  const hasContents = folders.length > 0 || projects.length > 0;
-  const isLoading = driveQuery.isLoading || driveQuery.isFetching;
+  const title = currentTeam && activeView.startsWith("team")
+    ? currentTeam.name
+    : VIEW_TITLES[activeView] || "Workspace";
 
   return (
-    <div className="min-h-screen bg-[#efefef] text-[#141414]">
-      <HomeTopNav />
+    <div className="linear-shell">
+      <HomeSidebar
+        activeView={activeView}
+        activeTeamId={activeTeamId}
+        onSelect={selectView}
+        teams={teams}
+      />
 
-      <div className="grid min-h-[calc(100vh-65px)] grid-cols-1 md:grid-cols-[240px_1fr]">
-        <HomeSidebar onNewFolder={handleNewFolder} onNewProject={handleNewProject} />
-
-        <section className="px-4 py-7 md:px-6">
-          <div className="flex flex-wrap items-center gap-1 text-[1.35rem] leading-none text-[#141414] md:text-[1.8rem]">
-            <button type="button" className="transition-opacity hover:opacity-70" onClick={openRoot}>
-              Folders
-            </button>
-            {folderPath.map((folder) => (
-              <div key={folder.id} className="inline-flex items-center gap-1">
-                <ChevronRightIcon className="h-4 w-4 md:h-5 md:w-5" />
-                <button type="button" className="transition-opacity hover:opacity-70" onClick={() => openFolder(folder.id)}>
-                  {folder.name}
-                </button>
-              </div>
-            ))}
+      <main className="linear-main">
+        <header className="linear-main__header">
+          <div>
+            <span className="linear-main__workspace">{organization?.name}</span>
+            <h1>{title}</h1>
           </div>
+          <button
+            type="button"
+            className="linear-header-action"
+            aria-label="Create project"
+            onClick={() => navigate("/projects/new")}
+          >
+            <NavIcon type="plus" />
+          </button>
+        </header>
 
-          <div className="mt-1 w-full border-b border-[#b8b0a5]" />
+        {error ? <div className="linear-error">{error}</div> : null}
 
-          {error && (
-            <div className="mt-5 w-full rounded-[7px] border border-[#b16858] bg-[#f4dfd9] px-3 py-2 text-sm text-[#5f2118]">
-              {error}
-            </div>
+        <div className="linear-view">
+          {workspaceQuery.isPending ? (
+            <LoadingState />
+          ) : (
+            <ViewContent
+              view={activeView}
+              currentTeam={currentTeam}
+              projects={projects}
+              folders={folders}
+              parts={parts}
+            />
           )}
-
-          <div className="mt-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {folders.map((folder) => (
-              <button
-                key={folder.id}
-                type="button"
-                onClick={() => openFolder(folder.id)}
-                className="flex h-[92px] items-start gap-3 rounded-[7px] border border-[#c6bdb1] bg-[#f7f4ee] p-3 text-left transition-colors hover:bg-[#ebe5dc]"
-              >
-                <FolderIcon className="mt-0.5 h-6 w-6 shrink-0 text-[#7d6e5f]" />
-                <span className="min-w-0 break-words text-[1rem] font-medium leading-snug">{folder.name}</span>
-              </button>
-            ))}
-          </div>
-
-          <h2 className="mb-3 mt-12 text-[1.4rem] font-medium text-[#141414] md:text-[2rem]">Files</h2>
-
-          <div className="grid w-full grid-cols-2 gap-x-3 gap-y-2 border-b border-[#b8b0a5] px-2 pb-2 text-sm text-[#171717] md:grid-cols-[1.6fr_0.28fr_0.65fr_0.65fr] md:gap-6 md:text-[0.98rem]">
-            <span>Named</span>
-            <span>Time</span>
-            <span>Modified By</span>
-            <span>Owned By</span>
-          </div>
-
-          <div className="w-full">
-            {projects.map((project) => (
-              <Link
-                key={project.id}
-                to={`/project/${project.id}`}
-                className="grid min-h-[46px] grid-cols-2 items-center gap-x-3 gap-y-1 border-b border-[#d2cbc2] px-2 py-2 text-sm transition-colors hover:bg-[#e8e3dc] md:grid-cols-[1.6fr_0.28fr_0.65fr_0.65fr] md:gap-6 md:text-[0.98rem]"
-              >
-                <span className="inline-flex min-w-0 items-center gap-2">
-                  <ProjectFileIcon className="h-4 w-4 shrink-0 text-[#6f6d6a]" />
-                  <span className="truncate">{project.name}</span>
-                </span>
-                <span>{formatUpdatedAt(project.updated_at)}</span>
-                <span className="truncate">Me</span>
-                <span className="truncate">Me</span>
-              </Link>
-            ))}
-          </div>
-
-          {!isLoading && !error && !hasContents && (
-            <div className="mt-10 w-full rounded-[7px] border border-dashed border-[#b8b0a5] px-5 py-8 text-center text-[#5f584d]">
-              This folder is empty.
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="mt-10 w-full rounded-[7px] border border-[#d2cbc2] px-5 py-8 text-center text-[#5f584d]">
-              Loading...
-            </div>
-          )}
-        </section>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
 
-function ProjectFileIcon({ className = "" }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
-      <path
-        d="M6 3.5h8.2L18 7.3v13.2H6zM14 3.8V8h4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.55"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+function ViewContent({ view, currentTeam, projects, folders, parts }) {
+  if (view === "projects" || view === "team-projects") {
+    return <ProjectsView projects={projects} folders={folders} />;
+  }
+
+  if (view === "inventory" || view === "team-inventory") {
+    return <InventoryView parts={parts} currentTeam={currentTeam} />;
+  }
+
+  if (view === "team-issues") {
+    return <TeamIssuesView currentTeam={currentTeam} />;
+  }
+
+  if (view === "team") {
+    return (
+      <EmptyPanel
+        icon="team"
+        title={currentTeam ? `${currentTeam.name} is ready` : "Team overview"}
+        copy="Team projects and inventory stay inside the active organization workspace."
       />
-    </svg>
+    );
+  }
+
+  if (view === "inbox") {
+    return <EmptyPanel icon="inbox" title="Inbox zero" copy="Updates and assignments for this organization will appear here." />;
+  }
+
+  if (view === "my-issues") {
+    return <EmptyPanel icon="issues" title="No issues assigned" copy="Issues assigned to you in this organization will appear here." />;
+  }
+
+  return <EmptyPanel icon="more" title="Workspace tools" copy="Additional organization settings and workflows will live here." />;
+}
+
+function TeamIssuesView({ currentTeam }) {
+  if (!currentTeam) {
+    return <EmptyPanel icon="issues" title="Select a team" copy="Choose a team to open its issue register." />;
+  }
+
+  return (
+    <div className="team-issues-view">
+      <IssuesDatabase
+        key={currentTeam.id}
+        initialIssues={createTeamIssues(currentTeam)}
+        title={`${currentTeam.name} issues`}
+        subtitle={`${currentTeam.key} team · Grouped by status`}
+      />
+    </div>
+  );
+}
+
+function ProjectsView({ projects, folders }) {
+  return <ProjectsTable projects={projects} folders={folders} />;
+}
+
+function InventoryView({ parts, currentTeam }) {
+  return (
+    <section className="linear-content-section">
+      <div className="linear-tabs">
+        <button type="button" className="is-active">Parts</button>
+        <button type="button">Types</button>
+        <button type="button" className="linear-filter-button" aria-label="Filter inventory"><NavIcon type="filter" /></button>
+      </div>
+      {parts.length ? (
+        <div className="linear-list">
+          {parts.map((part) => (
+            <div className="linear-project-row" key={part.id}>
+              <span className="linear-project-row__icon"><NavIcon type="inventory" /></span>
+              <span className="linear-project-row__body"><strong>{part.name}</strong><small>{part.type}</small></span>
+              <span className="linear-project-row__meta">{part.notes || "Available"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyPanel
+          icon="inventory"
+          title={currentTeam ? `No ${currentTeam.name} inventory yet` : "Inventory is empty"}
+          copy="Parts created in this organization will appear here."
+        />
+      )}
+    </section>
+  );
+}
+
+function EmptyPanel({ icon, title, copy }) {
+  return (
+    <div className="linear-empty-state">
+      <EmptyStateIcon type={icon} />
+      <h2>{title}</h2>
+      <p>{copy}</p>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="linear-loading" aria-busy="true" aria-label="Loading workspace">
+      <span /><span /><span />
+    </div>
   );
 }

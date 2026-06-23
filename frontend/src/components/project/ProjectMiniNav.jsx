@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 import { toPathSafeProjectId } from "../../lib/projectRouting";
 
@@ -9,20 +9,26 @@ const NAV_ITEMS = [
   { id: "issue-log", label: "Issue Log", Icon: IssueLogsIcon },
 ];
 
-export default function ProjectMiniNav({ active = "overview", projectId }) {
+export default function ProjectMiniNav({ active = "overview", projectId, theme = "light" }) {
   const routeProjectId = toPathSafeProjectId(projectId);
+  const isDark = theme === "dark";
 
   return (
     <nav aria-label="Project sections" className="mt-4 flex flex-wrap items-center gap-8 text-[1.65rem] md:text-[1.15rem]">
       {NAV_ITEMS.map(({ id, label, Icon }) => {
         const href = resolveTabHref(id, routeProjectId);
-        const className = `inline-flex items-center gap-2 transition-opacity ${
-          active === id ? "font-medium text-[#141414]" : "font-normal text-[#151515] hover:opacity-75"
-        }`;
+        const baseClassName = "inline-flex items-center gap-2 rounded-[6px] px-2.5 py-1.5 transition-colors";
 
         if (!href) {
           return (
-            <span key={id} className={`${className} cursor-default`}>
+            <span
+              key={id}
+              className={`${baseClassName} cursor-default ${
+                active === id
+                  ? `font-medium ${isDark ? "bg-[#292a2e] text-[#f0f0ed]" : "bg-[#d8d8d6] text-[#141414]"}`
+                  : `font-normal ${isDark ? "text-[#98999e]" : "text-[#4f4f4d]"}`
+              }`}
+            >
               {renderIcon(Icon)}
               {label}
             </span>
@@ -30,10 +36,25 @@ export default function ProjectMiniNav({ active = "overview", projectId }) {
         }
 
         return (
-          <Link key={id} to={href} className={className} aria-current={active === id ? "page" : undefined}>
+          <NavLink
+            key={id}
+            to={href}
+            end
+            className={({ isActive }) =>
+              `${baseClassName} ${
+                isActive
+                  ? `font-medium ${isDark ? "bg-[#292a2e] text-[#f0f0ed]" : "bg-[#d8d8d6] text-[#141414]"}`
+                  : `font-normal ${
+                      isDark
+                        ? "text-[#98999e] hover:bg-[#222327] hover:text-[#d8d8da]"
+                        : "text-[#4f4f4d] hover:bg-[#dededb] hover:text-[#141414]"
+                    }`
+              }`
+            }
+          >
             {renderIcon(Icon)}
             {label}
-          </Link>
+          </NavLink>
         );
       })}
     </nav>

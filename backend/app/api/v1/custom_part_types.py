@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from app.core.security import get_current_user_id
+from app.core.security import OrganizationContext, get_organization_context
 from app.db.session import get_session
 from app.models.custom_part_type import CustomPartType
 from app.models.part import BASE_PART_TYPES
@@ -20,12 +20,14 @@ BASE_OPTIONS = [
 
 @router.get("/", response_model=list[PartTypeOption])
 def list_part_types(
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[PartTypeOption]:
     """Return base types + user's custom types merged into one list."""
     custom = session.exec(
-        select(CustomPartType).where(CustomPartType.owner_id == user_id).order_by(CustomPartType.label)
+        select(CustomPartType)
+        .where(CustomPartType.organization_id == context.organization_id)
+        .order_by(CustomPartType.label)
     ).all()
     custom_options = [
         PartTypeOption(value=ct.value, label=ct.label, is_custom=True)
@@ -37,7 +39,7 @@ def list_part_types(
 @router.post("/", response_model=CustomPartTypeRead, status_code=status.HTTP_201_CREATED)
 def create_custom_part_type(
     payload: CustomPartTypeCreate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> CustomPartType:
     if payload.value in BASE_PART_TYPES:
@@ -48,7 +50,7 @@ def create_custom_part_type(
 
     existing = session.exec(
         select(CustomPartType).where(
-            CustomPartType.owner_id == user_id,
+            CustomPartType.organization_id == context.organization_id,
             CustomPartType.value == payload.value,
         )
     ).first()
@@ -58,7 +60,12 @@ def create_custom_part_type(
             detail=f"Custom type '{payload.value}' already exists.",
         )
 
-    custom_type = CustomPartType(owner_id=user_id, value=payload.value, label=payload.label)
+    custom_type = CustomPartType(
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
+        value=payload.value,
+        label=payload.label,
+    )
     session.add(custom_type)
     session.commit()
     session.refresh(custom_type)
@@ -68,11 +75,11 @@ def create_custom_part_type(
 @router.delete("/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_custom_part_type(
     type_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> None:
     custom_type = session.get(CustomPartType, type_id)
-    if not custom_type or custom_type.owner_id != user_id:
+    if not custom_type or custom_type.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Custom type not found")
     session.delete(custom_type)
     session.commit()

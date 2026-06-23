@@ -28,6 +28,16 @@ alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
+## Clerk Organizations
+
+Screwceus uses Clerk Organizations as the workspace/tenant boundary. In the Clerk Dashboard:
+
+1. Enable **Organizations** and require organization membership.
+2. Keep personal accounts disabled for the application workspace flow.
+3. Users can then create and switch organizations from the application sidebar.
+
+Every workspace API request is authorized from the active organization claim in Clerk's signed session token. Application teams are stored in the Screwceus database because they are nested inside a Clerk Organization.
+
 ## Clerk webhooks
 
 Clerk user records are synced into the database through a signed webhook.
@@ -49,6 +59,8 @@ https://<tunnel-or-api-domain>/api/v1/webhooks/clerk
 ```text
 user.created
 user.updated
+organization.created
+organization.updated
 ```
 
 4. Copy the endpoint signing secret into `.env`:

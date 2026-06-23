@@ -20,6 +20,7 @@ class PartUpdate(BaseModel):
 class PartRead(BaseModel):
     id: int
     owner_id: str
+    organization_id: str
     name: str
     type: str
     dimensions: dict

@@ -27,6 +27,7 @@ def client(engine):
             "sub": "user_folders",
             "email": "folders@example.com",
             "name": "Folders User",
+            "o": {"id": "org_folders", "slg": "folders-workspace", "rol": "admin"},
         }
 
     def override_get_session():
@@ -44,12 +45,17 @@ def client(engine):
 
 def test_folder_tree_returns_nested_folders_with_cors_header(client, engine):
     with Session(engine) as session:
-        root = Folder(owner_id="user_folders", name="Root")
+        root = Folder(owner_id="user_folders", organization_id="org_folders", name="Root")
         session.add(root)
         session.commit()
         session.refresh(root)
 
-        child = Folder(owner_id="user_folders", name="Child", parent_id=root.id)
+        child = Folder(
+            owner_id="user_folders",
+            organization_id="org_folders",
+            name="Child",
+            parent_id=root.id,
+        )
         session.add(child)
         session.commit()
         session.refresh(child)
@@ -58,6 +64,7 @@ def test_folder_tree_returns_nested_folders_with_cors_header(client, engine):
             {
                 "id": root.id,
                 "owner_id": "user_folders",
+                "organization_id": "org_folders",
                 "name": "Root",
                 "parent_id": None,
                 "created_at": root.created_at.isoformat(),
@@ -66,6 +73,7 @@ def test_folder_tree_returns_nested_folders_with_cors_header(client, engine):
                     {
                         "id": child.id,
                         "owner_id": "user_folders",
+                        "organization_id": "org_folders",
                         "name": "Child",
                         "parent_id": root.id,
                         "created_at": child.created_at.isoformat(),
@@ -76,7 +84,11 @@ def test_folder_tree_returns_nested_folders_with_cors_header(client, engine):
             }
         ]
 
-        other_user_folder = Folder(owner_id="other_user", name="Hidden")
+        other_user_folder = Folder(
+            owner_id="other_user",
+            organization_id="org_other",
+            name="Hidden",
+        )
         session.add(other_user_folder)
         session.commit()
 

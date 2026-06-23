@@ -7,6 +7,7 @@ import app.api.v1.photos as photos_api
 from app.api.v1.photos import router as photos_router
 from app.core import security
 from app.core.config import settings
+from app.core.security import OrganizationContext
 from app.db import base  # noqa: F401
 from app.db.session import get_session
 from app.models.photo import Photo
@@ -67,7 +68,12 @@ def test_upload_photo_with_project_id_creates_photo_and_project_screenshot(monke
     client, engine = _client(monkeypatch)
 
     with Session(engine) as session:
-        project = ProjectFile(owner_id="user_photo", name="Merlin Panel", description="")
+        project = ProjectFile(
+            owner_id="user_photo",
+            organization_id="org_photo",
+            name="Merlin Panel",
+            description="",
+        )
         session.add(project)
         session.commit()
         session.refresh(project)
@@ -121,7 +127,12 @@ def test_upload_photo_with_other_users_project_returns_404(monkeypatch):
     with Session(engine) as session:
         session.add(User(clerk_id="other_user", email="other@example.com"))
         session.commit()
-        project = ProjectFile(owner_id="other_user", name="Other Project", description="")
+        project = ProjectFile(
+            owner_id="other_user",
+            organization_id="org_other",
+            name="Other Project",
+            description="",
+        )
         session.add(project)
         session.commit()
         session.refresh(project)
@@ -212,6 +223,11 @@ def _client(monkeypatch, authenticated=True, max_bytes=10 * 1024 * 1024):
     app.dependency_overrides[get_session] = override_get_session
 
     if authenticated:
-        app.dependency_overrides[security.get_current_user_id] = lambda: "user_photo"
+        app.dependency_overrides[security.get_organization_context] = lambda: OrganizationContext(
+            user_id="user_photo",
+            organization_id="org_photo",
+            organization_slug="photo-workspace",
+            organization_role="admin",
+        )
 
     return TestClient(app), engine

@@ -18,6 +18,7 @@ class ProjectFileUpdate(BaseModel):
 class ProjectFileRead(BaseModel):
     id: int
     owner_id: str
+    organization_id: str
     folder_id: int | None
     name: str
     description: str
@@ -41,6 +42,7 @@ class ProjectScreenshotRead(BaseModel):
     project_file_id: int
     photo_id: int
     owner_id: str
+    organization_id: str
     caption: str
     sort_order: int
     created_at: datetime
@@ -62,6 +64,7 @@ class ProjectPartRead(BaseModel):
     project_file_id: int
     part_id: int
     owner_id: str
+    organization_id: str
     point: list[float] | None
     notes: str
     created_at: datetime

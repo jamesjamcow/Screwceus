@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import get_current_user_id
+from app.core.security import OrganizationContext, get_organization_context
 from app.db.session import get_session
 from app.models.folder import Folder
 from app.models.part import Part
@@ -44,10 +44,10 @@ ALLOWED_MODEL_TYPES = {
 def list_project_files(
     folder_id: int | None = Query(default=None),
     root_only: bool = Query(default=False),
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[ProjectFile]:
-    statement = select(ProjectFile).where(ProjectFile.owner_id == user_id)
+    statement = select(ProjectFile).where(ProjectFile.organization_id == context.organization_id)
     if folder_id is not None:
         statement = statement.where(ProjectFile.folder_id == folder_id)
     elif root_only:
@@ -59,11 +59,11 @@ def list_project_files(
 @router.get("/{project_id}", response_model=ProjectFileRead)
 def get_project_file(
     project_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectFile:
     project = session.get(ProjectFile, project_id)
-    if not project or project.owner_id != user_id:
+    if not project or project.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     return project
 
@@ -71,16 +71,17 @@ def get_project_file(
 @router.post("/", response_model=ProjectFileRead, status_code=status.HTTP_201_CREATED)
 def create_project_file(
     payload: ProjectFileCreate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectFile:
     if payload.folder_id is not None:
         folder = session.get(Folder, payload.folder_id)
-        if not folder or folder.owner_id != user_id:
+        if not folder or folder.organization_id != context.organization_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
 
     project = ProjectFile(
-        owner_id=user_id,
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
         folder_id=payload.folder_id,
         name=payload.name,
         description=payload.description,
@@ -98,10 +99,10 @@ def create_project_file(
 async def upload_project_model(
     project_id: int,
     file: UploadFile = File(...),
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectFile:
-    project = _require_project(project_id, user_id, session)
+    project = _require_project(project_id, context.organization_id, session)
 
     extension = Path(file.filename or "").suffix.lower()
     content_type = file.content_type or "application/octet-stream"
@@ -137,16 +138,16 @@ async def upload_project_model(
 def update_project_file(
     project_id: int,
     payload: ProjectFileUpdate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectFile:
     project = session.get(ProjectFile, project_id)
-    if not project or project.owner_id != user_id:
+    if not project or project.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     if payload.folder_id is not None:
         folder = session.get(Folder, payload.folder_id)
-        if not folder or folder.owner_id != user_id:
+        if not folder or folder.organization_id != context.organization_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -163,11 +164,11 @@ def update_project_file(
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_project_file(
     project_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> None:
     project = session.get(ProjectFile, project_id)
-    if not project or project.owner_id != user_id:
+    if not project or project.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Remove linked screenshots and parts
@@ -192,10 +193,10 @@ def delete_project_file(
 @router.get("/{project_id}/screenshots", response_model=list[ProjectScreenshotRead])
 def list_screenshots(
     project_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[ProjectScreenshot]:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
     statement = (
         select(ProjectScreenshot)
         .where(ProjectScreenshot.project_file_id == project_id)
@@ -212,19 +213,20 @@ def list_screenshots(
 def add_screenshot(
     project_id: int,
     payload: ProjectScreenshotCreate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectScreenshot:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
 
     photo = session.get(Photo, payload.photo_id)
-    if not photo or photo.owner_id != user_id:
+    if not photo or photo.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
 
     screenshot = ProjectScreenshot(
         project_file_id=project_id,
         photo_id=payload.photo_id,
-        owner_id=user_id,
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
         caption=payload.caption,
         sort_order=payload.sort_order,
     )
@@ -238,12 +240,16 @@ def add_screenshot(
 def remove_screenshot(
     project_id: int,
     screenshot_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> None:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
     screenshot = session.get(ProjectScreenshot, screenshot_id)
-    if not screenshot or screenshot.project_file_id != project_id or screenshot.owner_id != user_id:
+    if (
+        not screenshot
+        or screenshot.project_file_id != project_id
+        or screenshot.organization_id != context.organization_id
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Screenshot not found")
     session.delete(screenshot)
     session.commit()
@@ -257,10 +263,10 @@ def remove_screenshot(
 @router.get("/{project_id}/parts", response_model=list[ProjectPartRead])
 def list_project_parts(
     project_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[ProjectPart]:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
     statement = (
         select(ProjectPart)
         .where(ProjectPart.project_file_id == project_id)
@@ -277,13 +283,13 @@ def list_project_parts(
 def add_part_to_project(
     project_id: int,
     payload: ProjectPartAdd,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectPart:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
 
     part = session.get(Part, payload.part_id)
-    if not part or part.owner_id != user_id:
+    if not part or part.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Part not found")
 
     existing = session.exec(
@@ -298,7 +304,8 @@ def add_part_to_project(
     link = ProjectPart(
         project_file_id=project_id,
         part_id=payload.part_id,
-        owner_id=user_id,
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
         point=payload.point,
         notes=payload.notes,
     )
@@ -313,12 +320,16 @@ def update_project_part(
     project_id: int,
     link_id: int,
     payload: ProjectPartUpdate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> ProjectPart:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
     link = session.get(ProjectPart, link_id)
-    if not link or link.project_file_id != project_id or link.owner_id != user_id:
+    if (
+        not link
+        or link.project_file_id != project_id
+        or link.organization_id != context.organization_id
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project-part link not found")
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -335,12 +346,16 @@ def update_project_part(
 def remove_part_from_project(
     project_id: int,
     link_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> None:
-    _require_project(project_id, user_id, session)
+    _require_project(project_id, context.organization_id, session)
     link = session.get(ProjectPart, link_id)
-    if not link or link.project_file_id != project_id or link.owner_id != user_id:
+    if (
+        not link
+        or link.project_file_id != project_id
+        or link.organization_id != context.organization_id
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project-part link not found")
     session.delete(link)
     session.commit()
@@ -351,8 +366,8 @@ def remove_part_from_project(
 # ---------------------------------------------------------------------------
 
 
-def _require_project(project_id: int, user_id: str, session: Session) -> ProjectFile:
+def _require_project(project_id: int, organization_id: str, session: Session) -> ProjectFile:
     project = session.get(ProjectFile, project_id)
-    if not project or project.owner_id != user_id:
+    if not project or project.organization_id != organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     return project

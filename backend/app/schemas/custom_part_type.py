@@ -11,6 +11,7 @@ class CustomPartTypeCreate(BaseModel):
 class CustomPartTypeRead(BaseModel):
     id: int
     owner_id: str
+    organization_id: str
     value: str
     label: str
     created_at: datetime

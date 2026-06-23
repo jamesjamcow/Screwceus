@@ -1,4 +1,5 @@
 from functools import lru_cache
+from dataclasses import dataclass
 
 import httpx
 import jwt
@@ -10,8 +11,17 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.models.user import User
 from app.services.user_sync import sync_user_from_jwt_payload
+from app.services.organization_sync import sync_organization_from_jwt_payload
 
 bearer = HTTPBearer(auto_error=True)
+
+
+@dataclass(frozen=True)
+class OrganizationContext:
+    user_id: str
+    organization_id: str
+    organization_slug: str
+    organization_role: str
 
 
 @lru_cache(maxsize=1)
@@ -69,3 +79,28 @@ def get_current_user_id(
 ) -> str:
     user = sync_user_from_jwt_payload(payload, session)
     return user.clerk_id
+
+
+def get_organization_context(
+    payload: dict = Depends(verify_clerk_token),
+    session: Session = Depends(get_session),
+) -> OrganizationContext:
+    user = sync_user_from_jwt_payload(payload, session)
+    organization = sync_organization_from_jwt_payload(payload, session)
+    if organization is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Select an organization to access workspace data",
+        )
+
+    organization_claim = payload.get("o") if isinstance(payload.get("o"), dict) else {}
+    role = str(organization_claim.get("rol") or payload.get("org_role") or "member")
+    if role.startswith("org:"):
+        role = role.removeprefix("org:")
+
+    return OrganizationContext(
+        user_id=user.clerk_id,
+        organization_id=organization.clerk_id,
+        organization_slug=organization.slug,
+        organization_role=role,
+    )

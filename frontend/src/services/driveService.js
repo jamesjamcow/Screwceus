@@ -16,9 +16,26 @@ export async function listFolders(token, { parentId } = {}) {
 }
 
 export async function listProjectFiles(token, { folderId } = {}) {
+  const hasFolderFilter = folderId !== undefined && folderId !== null;
   const response = await api.get("/v1/projects/", {
     headers: authHeaders(token),
-    params: folderId ? { folder_id: folderId } : { root_only: true },
+    params: hasFolderFilter ? { folder_id: folderId } : {},
+  });
+
+  return response.data;
+}
+
+export async function listParts(token) {
+  const response = await api.get("/v1/parts/", {
+    headers: authHeaders(token),
+  });
+
+  return response.data;
+}
+
+export async function listTeams(token) {
+  const response = await api.get("/v1/teams/", {
+    headers: authHeaders(token),
   });
 
   return response.data;

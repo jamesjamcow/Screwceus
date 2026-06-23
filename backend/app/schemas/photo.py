@@ -16,6 +16,7 @@ class PhotoRead(BaseModel):
 
     id: int
     owner_id: str
+    organization_id: str
     title: str
     image_url: str
     annotation_json: dict | None

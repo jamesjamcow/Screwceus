@@ -7,6 +7,7 @@ import app.api.v1.project_files as project_files_api
 from app.api.v1.project_files import router as projects_router
 from app.core import security
 from app.core.config import settings
+from app.core.security import OrganizationContext
 from app.db import base  # noqa: F401
 from app.db.session import get_session
 from app.models.project_file import ProjectFile
@@ -84,7 +85,12 @@ def test_create_project_initializes_model_fields(monkeypatch):
 
 def _create_project(engine):
     with Session(engine) as session:
-        project = ProjectFile(owner_id="user_project", name="Merlin Panel", description="")
+        project = ProjectFile(
+            owner_id="user_project",
+            organization_id="org_project",
+            name="Merlin Panel",
+            description="",
+        )
         session.add(project)
         session.commit()
         session.refresh(project)
@@ -115,6 +121,11 @@ def _client(monkeypatch, authenticated=True, max_bytes=50 * 1024 * 1024):
     app.dependency_overrides[get_session] = override_get_session
 
     if authenticated:
-        app.dependency_overrides[security.get_current_user_id] = lambda: "user_project"
+        app.dependency_overrides[security.get_organization_context] = lambda: OrganizationContext(
+            user_id="user_project",
+            organization_id="org_project",
+            organization_slug="project-workspace",
+            organization_role="admin",
+        )
 
     return TestClient(app), engine

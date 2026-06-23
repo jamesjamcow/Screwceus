@@ -5,6 +5,7 @@ from svix.webhooks import Webhook, WebhookVerificationError
 from app.core.config import settings
 from app.db.session import get_session
 from app.services.user_sync import sync_user_from_clerk_payload
+from app.services.organization_sync import sync_organization_from_clerk_payload
 
 router = APIRouter()
 
@@ -31,7 +32,10 @@ async def handle_clerk_webhook(
             detail="Invalid webhook signature",
         ) from exc
 
-    if event.get("type") in {"user.created", "user.updated"}:
+    event_type = event.get("type")
+    if event_type in {"user.created", "user.updated"}:
         sync_user_from_clerk_payload(event.get("data") or {}, session)
+    elif event_type in {"organization.created", "organization.updated"}:
+        sync_organization_from_clerk_payload(event.get("data") or {}, session)
 
     return {"status": "ok"}

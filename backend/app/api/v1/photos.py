@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import get_current_user_id
+from app.core.security import OrganizationContext, get_organization_context
 from app.db.session import get_session
 from app.models.photo import Photo
 from app.models.project_file import ProjectFile
@@ -22,21 +22,26 @@ ALLOWED_IMAGE_TYPES = {
 
 @router.get("/", response_model=list[PhotoRead])
 def list_photos(
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[Photo]:
-    statement = select(Photo).where(Photo.owner_id == user_id).order_by(Photo.created_at.desc())
+    statement = (
+        select(Photo)
+        .where(Photo.organization_id == context.organization_id)
+        .order_by(Photo.created_at.desc())
+    )
     return list(session.exec(statement))
 
 
 @router.post("/", response_model=PhotoRead)
 def create_photo(
     payload: PhotoCreate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> Photo:
     photo = Photo(
-        owner_id=user_id,
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
         title=payload.title,
         image_url=payload.image_url,
         annotation_json=payload.annotation_json,
@@ -54,7 +59,7 @@ async def upload_photo(
     project_id: int | None = Form(default=None),
     caption: str = Form(default=""),
     sort_order: int = Form(default=0),
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> PhotoUploadRead:
     content_type = file.content_type or ""
@@ -72,7 +77,7 @@ async def upload_photo(
     project: ProjectFile | None = None
     if project_id is not None:
         project = session.get(ProjectFile, project_id)
-        if not project or project.owner_id != user_id:
+        if not project or project.organization_id != context.organization_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     filename = _image_filename(file.filename, extension)
@@ -83,7 +88,8 @@ async def upload_photo(
     )
 
     photo = Photo(
-        owner_id=user_id,
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
         title=title or file.filename or "Uploaded image",
         image_url=uploaded_file.url,
         annotation_json=None,
@@ -96,7 +102,8 @@ async def upload_photo(
         screenshot = ProjectScreenshot(
             project_file_id=project.id,
             photo_id=photo.id,
-            owner_id=user_id,
+            owner_id=context.user_id,
+            organization_id=context.organization_id,
             caption=caption,
             sort_order=sort_order,
         )

@@ -112,6 +112,26 @@ def test_get_current_user_id_dependency_creates_user(engine):
         assert user.email == "dependency@example.com"
 
 
+def test_get_organization_context_reads_clerk_v2_claim(session):
+    context = security.get_organization_context(
+        {
+            "sub": "user_org_context",
+            "email": "context@example.com",
+            "o": {
+                "id": "org_context",
+                "slg": "context-workspace",
+                "rol": "admin",
+            },
+        },
+        session,
+    )
+
+    assert context.user_id == "user_org_context"
+    assert context.organization_id == "org_context"
+    assert context.organization_slug == "context-workspace"
+    assert context.organization_role == "admin"
+
+
 def test_get_current_user_handles_concurrent_create_conflict(monkeypatch, session, engine):
     original_commit = session.commit
     attempts = 0

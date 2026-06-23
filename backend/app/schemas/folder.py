@@ -20,6 +20,7 @@ class FolderRead(BaseModel):
 
     id: int
     owner_id: str
+    organization_id: str
     name: str
     parent_id: int | None
     created_at: datetime

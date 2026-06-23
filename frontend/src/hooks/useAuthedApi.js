@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { useCallback } from "react";
 
 export function useAuthedApi() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { getToken, isLoaded, isSignedIn, orgId } = useAuth();
 
   const authedFetch = useCallback(
     async (fn) => {
@@ -20,5 +20,7 @@ export function useAuthedApi() {
   return {
     authedFetch,
     isAuthReady: isLoaded && isSignedIn,
+    isOrganizationReady: isLoaded && isSignedIn && Boolean(orgId),
+    organizationId: orgId ?? null,
   };
 }

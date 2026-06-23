@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from app.core.security import get_current_user_id
+from app.core.security import OrganizationContext, get_organization_context
 from app.db.session import get_session
 from app.models.folder import Folder
 from app.schemas.folder import FolderCreate, FolderRead, FolderTree, FolderUpdate
@@ -14,11 +14,11 @@ router = APIRouter()
 @router.get("/", response_model=list[FolderRead])
 def list_folders(
     parent_id: int | None = None,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[Folder]:
     statement = select(Folder).where(
-        Folder.owner_id == user_id,
+        Folder.organization_id == context.organization_id,
         Folder.parent_id == parent_id,
     ).order_by(Folder.name)
     return list(session.exec(statement))
@@ -26,10 +26,10 @@ def list_folders(
 
 @router.get("/tree", response_model=list[FolderTree])
 def folder_tree(
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[FolderTree]:
-    statement = select(Folder).where(Folder.owner_id == user_id).order_by(Folder.name)
+    statement = select(Folder).where(Folder.organization_id == context.organization_id).order_by(Folder.name)
     all_folders = list(session.exec(statement))
 
     lookup: dict[int, FolderTree] = {}
@@ -49,11 +49,11 @@ def folder_tree(
 @router.get("/{folder_id}", response_model=FolderRead)
 def get_folder(
     folder_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> Folder:
     folder = session.get(Folder, folder_id)
-    if not folder or folder.owner_id != user_id:
+    if not folder or folder.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
     return folder
 
@@ -61,15 +61,20 @@ def get_folder(
 @router.post("/", response_model=FolderRead, status_code=status.HTTP_201_CREATED)
 def create_folder(
     payload: FolderCreate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> Folder:
     if payload.parent_id is not None:
         parent = session.get(Folder, payload.parent_id)
-        if not parent or parent.owner_id != user_id:
+        if not parent or parent.organization_id != context.organization_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent folder not found")
 
-    folder = Folder(owner_id=user_id, name=payload.name, parent_id=payload.parent_id)
+    folder = Folder(
+        owner_id=context.user_id,
+        organization_id=context.organization_id,
+        name=payload.name,
+        parent_id=payload.parent_id,
+    )
     session.add(folder)
     session.commit()
     session.refresh(folder)
@@ -80,18 +85,18 @@ def create_folder(
 def update_folder(
     folder_id: int,
     payload: FolderUpdate,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> Folder:
     folder = session.get(Folder, folder_id)
-    if not folder or folder.owner_id != user_id:
+    if not folder or folder.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
 
     if payload.parent_id is not None:
         if payload.parent_id == folder_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Folder cannot be its own parent")
         parent = session.get(Folder, payload.parent_id)
-        if not parent or parent.owner_id != user_id:
+        if not parent or parent.organization_id != context.organization_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent folder not found")
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -108,11 +113,11 @@ def update_folder(
 @router.delete("/{folder_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_folder(
     folder_id: int,
-    user_id: str = Depends(get_current_user_id),
+    context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> None:
     folder = session.get(Folder, folder_id)
-    if not folder or folder.owner_id != user_id:
+    if not folder or folder.organization_id != context.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
 
     # Recursively collect folder IDs to delete
@@ -122,7 +127,10 @@ def delete_folder(
         current = queue.pop()
         ids_to_delete.append(current)
         children = session.exec(
-            select(Folder).where(Folder.parent_id == current, Folder.owner_id == user_id)
+            select(Folder).where(
+                Folder.parent_id == current,
+                Folder.organization_id == context.organization_id,
+            )
         ).all()
         queue.extend(child.id for child in children)
 
