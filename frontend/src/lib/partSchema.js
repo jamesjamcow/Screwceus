@@ -60,46 +60,6 @@ export const partFormSchema = z.object({
   notes: z.string().trim(),
 });
 
-const PART_FIXTURES = [
-  {
-    name: "Drive Screw",
-    type: "fastener",
-    dimensions: { thread: "M4", length: "40mm", material: "Steel" },
-    notes: "Primary chassis fastener.",
-  },
-  {
-    name: "Rail Spacer",
-    type: "spacer",
-    dimensions: { outerDiameter: "8mm", innerDiameter: "4.3mm", length: "12mm" },
-    notes: "Separates the side rails during final assembly.",
-  },
-  {
-    name: "Guide Bearing",
-    type: "bearing",
-    dimensions: { innerDiameter: "5mm", outerDiameter: "16mm", width: "5mm" },
-    notes: "Keep lightly lubricated before install.",
-  },
-  {
-    name: "Signal Connector",
-    type: "connector",
-    dimensions: { pitch: "2.5mm", pins: 4, series: "JST-XH" },
-    notes: "Route away from the motor leads.",
-  },
-  {
-    name: "Mount Bracket",
-    type: "bracket",
-    dimensions: { width: "120mm", height: "35mm", thickness: "3mm" },
-    notes: "Deburr edges before fit check.",
-  },
-];
-
-export function createPartRecords() {
-  return PART_FIXTURES.map((part, index) => ({
-    id: index + 1,
-    ...part,
-  }));
-}
-
 export function formatPartValue(fieldName, value) {
   if (fieldName === "type") {
     return PART_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? value ?? "—";

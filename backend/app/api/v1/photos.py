@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlmodel import Session, select
 
 from app.core.config import settings
@@ -9,6 +9,7 @@ from app.models.project_file import ProjectFile
 from app.models.project_screenshot import ProjectScreenshot
 from app.schemas.photo import PhotoCreate, PhotoRead, PhotoUploadRead
 from app.services.uploadthing import upload_file_to_uploadthing
+from app.services.team_access import require_team_member, resolve_storage_team
 
 router = APIRouter()
 
@@ -22,12 +23,17 @@ ALLOWED_IMAGE_TYPES = {
 
 @router.get("/", response_model=list[PhotoRead])
 def list_photos(
+    team_id: int | None = Query(default=None, gt=0),
     context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> list[Photo]:
+    team = resolve_storage_team(team_id, context, session)
     statement = (
         select(Photo)
-        .where(Photo.organization_id == context.organization_id)
+        .where(
+            Photo.organization_id == context.organization_id,
+            Photo.team_id == team.id,
+        )
         .order_by(Photo.created_at.desc())
     )
     return list(session.exec(statement))
@@ -39,9 +45,11 @@ def create_photo(
     context: OrganizationContext = Depends(get_organization_context),
     session: Session = Depends(get_session),
 ) -> Photo:
+    team = resolve_storage_team(payload.team_id, context, session)
     photo = Photo(
         owner_id=context.user_id,
         organization_id=context.organization_id,
+        team_id=team.id,
         title=payload.title,
         image_url=payload.image_url,
         annotation_json=payload.annotation_json,
@@ -75,10 +83,18 @@ async def upload_photo(
         raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Image is too large")
 
     project: ProjectFile | None = None
+    storage_team = None
     if project_id is not None:
         project = session.get(ProjectFile, project_id)
         if not project or project.organization_id != context.organization_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+        try:
+            require_team_member(project.team_id, context, session)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+        storage_team = project.team_id
+    else:
+        storage_team = resolve_storage_team(None, context, session).id
 
     filename = _image_filename(file.filename, extension)
     uploaded_file = await upload_file_to_uploadthing(
@@ -90,6 +106,7 @@ async def upload_photo(
     photo = Photo(
         owner_id=context.user_id,
         organization_id=context.organization_id,
+        team_id=storage_team,
         title=title or file.filename or "Uploaded image",
         image_url=uploaded_file.url,
         annotation_json=None,

@@ -1,7 +1,8 @@
-import { Outlet, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { getProjectErrorMessage, normalizeProjectId, useProject } from "../../hooks/useDrive";
 import ProjectRouteError from "./ProjectRouteError";
+import ProjectWorkspaceShell from "./ProjectWorkspaceShell";
 
 export default function ProjectRouteGuard() {
   const { projectId } = useParams();
@@ -26,9 +27,9 @@ export default function ProjectRouteGuard() {
     );
   }
 
-  return <Outlet context={{ project: projectQuery.data }} />;
+  return <ProjectWorkspaceShell project={projectQuery.data} />;
 }
 
 function ProjectRouteLoading() {
-  return <div className="min-h-screen bg-[#efefef]" aria-busy="true" aria-label="Loading project" />;
+  return <div className="min-h-screen bg-[#101113]" aria-busy="true" aria-label="Loading project" />;
 }

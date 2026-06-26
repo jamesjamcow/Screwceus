@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-import PartCard from "../components/parts/PartCard";
-import HomeTopNav from "../components/home/HomeTopNav";
-import { createPartRecords } from "../lib/partSchema";
-import ProjectMiniNav from "../components/project/ProjectMiniNav";
+import ProjectPartsTable from "../components/project/ProjectPartsTable";
 import { toPathSafeProjectId } from "../lib/projectRouting";
 import { resolveApiAssetUrl } from "../lib/axios";
 import { useAuthedApi } from "../hooks/useAuthedApi";
+import { useProjectParts } from "../hooks/useDrive";
 import { uploadPhoto } from "../services/driveService";
 
 const IMAGE_COMPRESSION_OPTIONS = {
@@ -19,16 +17,15 @@ const IMAGE_COMPRESSION_OPTIONS = {
 
 export default function ProjectPage() {
   const { projectId } = useParams();
-  const { project } = useOutletContext();
   const navigate = useNavigate();
   const uploadInputRef = useRef(null);
   const { authedFetch } = useAuthedApi();
   const [documentError, setDocumentError] = useState("");
   const [isStoringDocument, setIsStoringDocument] = useState(false);
 
-  const projectName = project.name;
   const targetProjectId = useMemo(() => toPathSafeProjectId(projectId), [projectId]);
-  const parts = useMemo(() => createPartRecords(), []);
+  const projectPartsQuery = useProjectParts(projectId);
+  const projectPartLinks = projectPartsQuery.data ?? [];
 
   const handleStartEntry = () => {
     navigate(`/project/${targetProjectId}/new-entry`);
@@ -156,49 +153,43 @@ export default function ProjectPage() {
   }, [handlePagePaste]);
 
   return (
-    <div className="min-h-screen bg-[#efefef] text-[#141414]">
-      <HomeTopNav />
+    <div className="project-page min-h-full text-[#dddde0] project-design-page">
+      <main className="project-page__inner my-0 mx-auto pt-[36px] pr-0 pb-[64px] pl-0 [@media_(max-width:720px)]:pt-[26px] [@media_(max-width:720px)]:pr-0 [@media_(max-width:720px)]:pb-[44px] [@media_(max-width:720px)]:pl-0">
+        <section className="project-design-import pb-[36px] border-b border-b-[#202125]">
+          <div className="project-page__section-heading flex items-end justify-between gap-[40px] mb-[24px] [&>div>span]:block [&>div>span]:mb-[7px] [&>div>span]:text-[#64666c] [&>div>span]:text-[10px] [&>div>span]:font-[680] [&>div>span]:tracking-[.1em] [&>div>span]:uppercase [&_h1]:m-0 [&_h1]:text-[#eeeeef] [&_h1]:text-[22px] [&_h1]:font-[560] [&_h1]:tracking-[-.035em] [&_h1]:leading-[1.05] [&_h2]:m-0 [&_h2]:text-[#eeeeef] [&_h2]:text-[22px] [&_h2]:font-[560] [&_h2]:tracking-[-.035em] [&_h2]:leading-[1.05] [&_h2]:text-[17px] [&>p]:max-w-[430px] [&>p]:m-0 [&>p]:text-[#77797e] [&>p]:text-[12px] [&>p]:leading-[1.55] [&>p]:text-right [@media_(max-width:720px)]:items-start [@media_(max-width:720px)]:flex-col [@media_(max-width:720px)]:gap-[10px] [@media_(max-width:720px)]:[&>p]:text-left">
+            <div><span>Design intake</span><h1>Add a reference</h1></div>
+            <p>Paste or upload a drawing, then identify the parts that make up this project.</p>
+          </div>
 
-      <main className="mx-auto max-w-[1060px]">
-        <section className="min-h-[300px] border-b border-[#b8b0a5] px-5 pb-10 pt-8 md:min-h-[420px] md:px-0">
-          <h1 className="text-[2rem] leading-none md:text-[2.15rem]">
-            <span className="font-normal">SpaceX/</span>
-            <span className="font-semibold">{projectName}</span>
-          </h1>
-
-          <ProjectMiniNav active="design" projectId={projectId} />
-
-          <div className="mt-16 flex items-center justify-center md:mt-28">
+          <div className="project-design-dropzone min-h-[300px] grid place-items-center content-center gap-[22px] border border-dashed border-[#34363c] rounded-[10px] [@media_(max-width:720px)]:min-h-[260px]">
             <button
               type="button"
               onClick={handlePasteImage}
               disabled={isStoringDocument}
-              className="flex flex-col items-center text-center text-[#141414] transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-55"
+              className="project-design-paste flex flex-col items-center p-[20px] border-0 text-[#d8d8da] bg-transparent cursor-pointer [&:hover_.project-design-paste__icon]:border-[#5b5f9e] [&:hover_.project-design-paste__icon]:text-[#d7d9ff] [&:hover_.project-design-paste__icon]:bg-[#24263b] [&_strong]:text-[15px] [&_strong]:font-[570] [&>span:last-child]:mt-[6px] [&>span:last-child]:text-[#6f7177] [&>span:last-child]:text-[11px]"
             >
-              <UploadIcon className="h-16 w-16 md:h-[76px] md:w-[76px]" />
-              <span className="mt-2 text-[2rem] leading-none md:text-[2.15rem]">
+              <span className="project-design-paste__icon w-[52px] h-[52px] grid place-items-center mb-[15px] border border-[#393b42] rounded-[12px] text-[#a6a9dc] bg-[#1b1c21] [&_svg]:w-[28px] [&_svg]:h-[28px]"><UploadIcon /></span>
+              <strong>
                 {isStoringDocument ? "Storing image..." : "Paste Image"}
-              </span>
-              <span className="mt-2 text-[1.6rem] leading-none md:text-[1.5rem]">or upload</span>
-              <span className="mt-2 text-[1.6rem] leading-none md:text-[1.5rem]">or blank</span>
+              </strong>
+              <span>Use an image from your clipboard</span>
             </button>
-          </div>
-          <div className="mt-6 flex items-center justify-center">
+          <div className="project-design-actions flex gap-[8px] [@media_(max-width:720px)]:flex-col">
             <button
               type="button"
               onClick={handlePickDocument}
               disabled={isStoringDocument}
-              className="rounded-full border border-[#6f6d6a] px-4 py-1 text-sm text-[#141414] transition-colors hover:bg-[#e3dfd8] disabled:cursor-not-allowed disabled:opacity-55"
+              className="project-page__button min-h-[32px] py-0 px-[13px] border border-[#35363b] rounded-[6px] text-[#c7c7ca] bg-[#1a1b1e] text-[12px] cursor-pointer [&:hover]:border-[#47494f] [&:hover]:text-[#fff] [&:hover]:bg-[#222327] [&:disabled]:opacity-[.5] [&:disabled]:cursor-not-allowed"
             >
-              Upload Document
+              Upload document
             </button>
             <button
               type="button"
               onClick={handleStartEntry}
               disabled={isStoringDocument}
-              className="ml-3 rounded-full border border-[#6f6d6a] px-4 py-1 text-sm text-[#141414] transition-colors hover:bg-[#e3dfd8] disabled:cursor-not-allowed disabled:opacity-55"
+              className="project-page__button min-h-[32px] py-0 px-[13px] border border-[#35363b] rounded-[6px] text-[#c7c7ca] bg-[#1a1b1e] text-[12px] cursor-pointer [&:hover]:border-[#47494f] [&:hover]:text-[#fff] [&:hover]:bg-[#222327] [&:disabled]:opacity-[.5] [&:disabled]:cursor-not-allowed"
             >
-              Blank Entry
+              Start blank entry
             </button>
             <input
               ref={uploadInputRef}
@@ -207,40 +198,27 @@ export default function ProjectPage() {
               className="hidden"
               onChange={handleDocumentSelected}
             />
-          </div>
+          </div></div>
           {documentError ? (
-            <p role="alert" className="mt-3 text-center text-sm text-[#9d3434]">
+            <p role="alert" className="project-page__error mt-[12px] mr-0 mb-0 ml-0 text-[#df8f96] text-[12px] text-center">
               {documentError}
             </p>
           ) : null}
         </section>
 
-        <section className="px-5 pb-10 pt-6 md:px-0">
-          <label htmlFor="project-part-search" className="sr-only">
-            Search parts
-          </label>
-          <div className="relative">
-            <input
-              id="project-part-search"
-              type="text"
-              placeholder="Type here to search"
-              className="h-10 w-full rounded-lg border border-[#6f6d6a] bg-[#efefef] px-4 pr-14 text-[1.75rem] text-[#141414] placeholder:text-[#b5b5b5] focus:outline-none"
-            />
-
-            <button
-              type="button"
-              aria-label="Search inventory"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#141414] transition-opacity hover:opacity-70"
-            >
-              <SearchCatalogIcon className="h-7 w-7" />
-            </button>
+        <section className="project-design-parts pt-[30px]">
+          <div className="project-page__section-heading flex items-end justify-between gap-[40px] mb-[24px] [&>div>span]:block [&>div>span]:mb-[7px] [&>div>span]:text-[#64666c] [&>div>span]:text-[10px] [&>div>span]:font-[680] [&>div>span]:tracking-[.1em] [&>div>span]:uppercase [&_h1]:m-0 [&_h1]:text-[#eeeeef] [&_h1]:text-[22px] [&_h1]:font-[560] [&_h1]:tracking-[-.035em] [&_h1]:leading-[1.05] [&_h2]:m-0 [&_h2]:text-[#eeeeef] [&_h2]:text-[22px] [&_h2]:font-[560] [&_h2]:tracking-[-.035em] [&_h2]:leading-[1.05] [&_h2]:text-[17px] [&>p]:max-w-[430px] [&>p]:m-0 [&>p]:text-[#77797e] [&>p]:text-[12px] [&>p]:leading-[1.55] [&>p]:text-right [@media_(max-width:720px)]:items-start [@media_(max-width:720px)]:flex-col [@media_(max-width:720px)]:gap-[10px] [@media_(max-width:720px)]:[&>p]:text-left project-page__section-heading--compact items-center mb-[14px]">
+            <div><span>Project inventory</span><h2>Parts</h2></div>
+            <span className="project-page__count min-w-[24px] h-[20px] grid place-items-center border border-[#303136] rounded-[10px] text-[#77797e] text-[10px] bg-[#17181a]">{projectPartLinks.length}</span>
           </div>
-
-          <div className="mt-6 space-y-3">
-            {parts.map((part) => (
-              <PartCard key={part.id} part={part} badge={`#${part.id}`} />
-            ))}
-          </div>
+          <ProjectPartsTable
+            links={projectPartLinks}
+            isLoading={projectPartsQuery.isPending}
+            isError={projectPartsQuery.isError}
+            searchPlaceholder="Search project parts..."
+            emptyTitle="No parts linked"
+            emptyCopy="Create or link parts for this project to build its inventory."
+          />
         </section>
       </main>
     </div>
@@ -328,21 +306,6 @@ function UploadIcon({ className = "" }) {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function SearchCatalogIcon({ className = "" }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
-      <path
-        d="M7 4h8a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 4h10M9 12h3m-3 3h2m6.5 4.5L20 22m-1.5-2.5a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

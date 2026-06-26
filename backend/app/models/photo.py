@@ -8,6 +8,7 @@ class Photo(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     owner_id: str = Field(index=True, max_length=255)
     organization_id: str = Field(foreign_key="organization.clerk_id", index=True, max_length=255)
+    team_id: int = Field(foreign_key="team.id", index=True)
     title: str = Field(max_length=255)
     image_url: str = Field(max_length=1024)
     annotation_json: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))

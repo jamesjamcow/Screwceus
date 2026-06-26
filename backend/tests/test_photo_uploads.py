@@ -13,6 +13,7 @@ from app.db.session import get_session
 from app.models.photo import Photo
 from app.models.project_file import ProjectFile
 from app.models.project_screenshot import ProjectScreenshot
+from app.models.team import Team, TeamMembership
 from app.models.user import User
 from app.services.uploadthing import UploadThingFile
 
@@ -71,6 +72,7 @@ def test_upload_photo_with_project_id_creates_photo_and_project_screenshot(monke
         project = ProjectFile(
             owner_id="user_photo",
             organization_id="org_photo",
+            team_id=_team_id(session),
             name="Merlin Panel",
             description="",
         )
@@ -130,6 +132,7 @@ def test_upload_photo_with_other_users_project_returns_404(monkeypatch):
         project = ProjectFile(
             owner_id="other_user",
             organization_id="org_other",
+            team_id=_team_id(session),
             name="Other Project",
             description="",
         )
@@ -211,6 +214,16 @@ def _client(monkeypatch, authenticated=True, max_bytes=10 * 1024 * 1024):
 
     with Session(engine) as session:
         session.add(User(clerk_id="user_photo", email="photo@example.com"))
+        session.flush()
+        team = Team(
+            organization_id="org_photo",
+            name="General",
+            key="GENERAL",
+            created_by="user_photo",
+        )
+        session.add(team)
+        session.flush()
+        session.add(TeamMembership(team_id=team.id, user_id="user_photo", role="admin"))
         session.commit()
 
     app = FastAPI()
@@ -231,3 +244,7 @@ def _client(monkeypatch, authenticated=True, max_bytes=10 * 1024 * 1024):
         )
 
     return TestClient(app), engine
+
+
+def _team_id(session: Session) -> int:
+    return session.exec(select(Team.id).where(Team.organization_id == "org_photo")).one()

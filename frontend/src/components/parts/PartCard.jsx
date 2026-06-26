@@ -20,7 +20,7 @@ export default function PartCard({
       onClick={onClick}
       onKeyDown={onKeyDown}
       {...props}
-      className={`relative rounded-lg border px-4 py-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors ${
+      className={`part-card relative rounded-lg border px-4 py-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors ${
         selected
           ? "border-[#c84545] bg-[#f7e3e3] ring-1 ring-[#c84545]"
           : interactive

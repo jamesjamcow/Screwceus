@@ -38,6 +38,10 @@ Screwceus uses Clerk Organizations as the workspace/tenant boundary. In the Cler
 
 Every workspace API request is authorized from the active organization claim in Clerk's signed session token. Application teams are stored in the Screwceus database because they are nested inside a Clerk Organization.
 
+### Paid team creation
+
+Team creation uses Clerk Billing's active Organization Plan from the signed session token. The default `free` plan can use the General team; any paid Organization Plan can create additional teams. Add `CLERK_SECRET_KEY` to the backend environment so selected team members can be verified against Clerk before team memberships are created.
+
 ## Clerk webhooks
 
 Clerk user records are synced into the database through a signed webhook.

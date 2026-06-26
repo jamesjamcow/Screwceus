@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     clerk_issuer: str = Field(..., alias="CLERK_ISSUER")
     clerk_jwks_url: str = Field(..., alias="CLERK_JWKS_URL")
     clerk_audience: str | None = Field(default=None, alias="CLERK_AUDIENCE")
+    clerk_secret_key: str = Field(default="", alias="CLERK_SECRET_KEY")
+    clerk_api_url: str = Field(default="https://api.clerk.com/v1", alias="CLERK_API_URL")
     clerk_webhook_signing_secret: str = Field(default="", alias="CLERK_WEBHOOK_SIGNING_SECRET")
 
     @property

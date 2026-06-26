@@ -53,7 +53,7 @@ export default function NewProjectPage() {
         folderId: currentFolderId,
         modelFile: values.modelFile?.[0] ?? null,
       });
-      navigate(`/project/${project.id}`);
+      navigate(`/project/${project.id}/overview`);
     } catch {
       // The mutation error is rendered from TanStack Query state.
     }

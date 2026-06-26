@@ -2,7 +2,6 @@ import { SignedIn, SignedOut, SignInButton, SignOutButton, UserButton } from "@c
 import { Link } from "react-router-dom";
 
 import { AUTH_ROUTES } from "../../lib/clerkAppearance";
-import { BrandIcon } from "./HomeIcons";
 
 export default function HomeTopNav({ theme = "light" }) {
   const isDark = theme === "dark";
@@ -14,7 +13,7 @@ export default function HomeTopNav({ theme = "light" }) {
       }`}
     >
       <Link to="/" className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80">
-        <BrandIcon className={`h-[22px] w-[22px] shrink-0 ${isDark ? "text-[#f1f1ee]" : "text-[#121212]"}`} />
+        <img src="/logo.png" alt="" className="h-[24px] w-[24px] shrink-0 object-contain" />
         <span className={`text-3xl font-medium tracking-[-0.02em] md:text-[1.85rem] ${isDark ? "text-[#f1f1ee]" : "text-[#141414]"}`}>
           Screwceus
         </span>

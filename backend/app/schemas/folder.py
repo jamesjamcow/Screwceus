@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class FolderCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     parent_id: int | None = None
+    team_id: int | None = Field(default=None, gt=0)
 
 
 class FolderUpdate(BaseModel):
@@ -21,6 +22,7 @@ class FolderRead(BaseModel):
     id: int
     owner_id: str
     organization_id: str
+    team_id: int
     name: str
     parent_id: int | None
     created_at: datetime

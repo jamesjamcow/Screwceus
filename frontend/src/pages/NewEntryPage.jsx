@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Image as KonvaImage, Layer, Line, Stage } from "react-konva";
-import { useLocation, useOutletContext } from "react-router-dom";
+import { Arrow as KonvaArrow, Image as KonvaImage, Layer, Line, Stage } from "react-konva";
+import { useLocation, useParams } from "react-router-dom";
 
 import PartCard from "../components/parts/PartCard";
-import HomeTopNav from "../components/home/HomeTopNav";
+import {
+  getCreatePartErrorMessage,
+  getProjectPartErrorMessage,
+  useAddProjectPart,
+  useCreatePart,
+} from "../hooks/useDrive";
 import { PART_FIELDS, PART_FORM_DEFAULT_VALUES, partFormSchema } from "../lib/partSchema";
 
 const FIELD_CLASS =
@@ -20,11 +25,19 @@ const ERASER_STROKE = {
   width: 26,
 };
 
-export default function NewEntryPage() {
-  const { project } = useOutletContext();
-  const location = useLocation();
+const ARROW_STROKE = {
+  color: DRAW_STROKE.color,
+  width: 5,
+  pointerLength: 18,
+  pointerWidth: 16,
+};
 
-  const projectName = project.name;
+export default function NewEntryPage() {
+  const location = useLocation();
+  const { projectId } = useParams();
+  const createPartMutation = useCreatePart();
+  const addProjectPartMutation = useAddProjectPart(projectId);
+
   const documentSource = useMemo(() => {
     const state = location.state ?? {};
     const name = state.documentName ?? state.uploadedFileName ?? "";
@@ -51,29 +64,39 @@ export default function NewEntryPage() {
     resolver: zodResolver(partFormSchema),
     defaultValues: PART_FORM_DEFAULT_VALUES,
   });
+  const isSaving = isSubmitting || createPartMutation.isPending || addProjectPartMutation.isPending;
+  const apiError = createPartMutation.error
+    ? getCreatePartErrorMessage(createPartMutation.error)
+    : addProjectPartMutation.error
+      ? getProjectPartErrorMessage(addProjectPartMutation.error)
+      : "";
 
-  const handleValidSubmit = (values) => {
-    setSubmittedEntry(values);
+  const handleValidSubmit = async (values) => {
+    setSubmittedEntry(null);
+    try {
+      const createdPart = await createPartMutation.mutateAsync(values);
+      await addProjectPartMutation.mutateAsync({ partId: createdPart.id });
+      setSubmittedEntry(createdPart);
+    } catch {
+      // Mutation errors are rendered below the form.
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#efefef] text-[#141414]">
-      <HomeTopNav />
-
-      <main className="mx-auto w-full max-w-[1260px] px-4 pb-10 pt-5 md:px-7 md:pt-7">
-        <div className="mb-4 text-[1.35rem] md:text-[1.05rem]">
-          <span className="font-normal">SpaceX/</span>
-          <span className="font-semibold">{projectName}</span>
+    <div className="project-page min-h-full text-[#dddde0] project-entry-page">
+      <main className="project-page__inner my-0 mx-auto pt-[36px] pr-0 pb-[64px] pl-0 [@media_(max-width:720px)]:pt-[26px] [@media_(max-width:720px)]:pr-0 [@media_(max-width:720px)]:pb-[44px] [@media_(max-width:720px)]:pl-0 project-entry-page__inner [@media_(max-width:720px)]:pt-[26px] [@media_(max-width:720px)]:pr-0 [@media_(max-width:720px)]:pb-[44px] [@media_(max-width:720px)]:pl-0">
+        <div className="project-page__section-heading flex items-end justify-between gap-[40px] mb-[24px] [&>div>span]:block [&>div>span]:mb-[7px] [&>div>span]:text-[#64666c] [&>div>span]:text-[10px] [&>div>span]:font-[680] [&>div>span]:tracking-[.1em] [&>div>span]:uppercase [&_h1]:m-0 [&_h1]:text-[#eeeeef] [&_h1]:text-[22px] [&_h1]:font-[560] [&_h1]:tracking-[-.035em] [&_h1]:leading-[1.05] [&_h2]:m-0 [&_h2]:text-[#eeeeef] [&_h2]:text-[22px] [&_h2]:font-[560] [&_h2]:tracking-[-.035em] [&_h2]:leading-[1.05] [&_h2]:text-[17px] [&>p]:max-w-[430px] [&>p]:m-0 [&>p]:text-[#77797e] [&>p]:text-[12px] [&>p]:leading-[1.55] [&>p]:text-right [@media_(max-width:720px)]:items-start [@media_(max-width:720px)]:flex-col [@media_(max-width:720px)]:gap-[10px] [@media_(max-width:720px)]:[&>p]:text-left">
+          <div><span>Design intake</span><h1>New part entry</h1></div>
+          <p>Mark up the source document and capture the matching inventory details.</p>
         </div>
 
-        <section className="grid gap-6 lg:grid-cols-[1.35fr_0.88fr]">
-          <article className="overflow-hidden border border-[#c6c1b8] bg-[#e6e6e6]">
-            <CanvasToolbar />
+        <section className="project-entry-grid grid gap-[22px] [@media_(max-width:980px)]:grid-cols-1">
+          <article className="project-entry-canvas min-w-0 border-0 rounded-none bg-transparent overflow-visible">
             <SketchCanvas documentSource={documentSource} />
           </article>
 
-          <article className="bg-[#efefef]">
-            <h1 className="text-[2.75rem] font-semibold leading-none md:text-[2.35rem]">New Entry</h1>
+          <article className="project-entry-form-panel min-w-0 border-0 rounded-none bg-transparent p-0 [&_select_option]:text-[#d7d7da] [&_select_option]:bg-[#17181a]">
+            <h2 className="project-entry-form-panel__title m-0 text-[#eeeeef] text-[17px] font-[560]">Part details</h2>
             <p className="mt-2 min-h-6 text-sm text-[#54504a]">
               {documentSource.name
                 ? `${documentSource.sourceType === "clipboard" ? "Pasted" : "Uploaded"}: ${documentSource.name}`
@@ -129,42 +152,25 @@ export default function NewEntryPage() {
                 <p className="text-sm text-[#54504a]">Validated against the shared part schema.</p>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="rounded border border-[#6f6d6a] bg-[#141414] px-4 py-2 text-sm text-[#efefef] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSaving}
+                  className="project-page__button min-h-[32px] py-0 px-[13px] border border-[#35363b] rounded-[6px] text-[#c7c7ca] bg-[#1a1b1e] text-[12px] cursor-pointer [&:hover]:border-[#47494f] [&:hover]:text-[#fff] [&:hover]:bg-[#222327] [&:disabled]:opacity-[.5] [&:disabled]:cursor-not-allowed project-page__button--primary border-[#6c72cf] text-[#fff] bg-[#5964c7] [&:hover]:border-[#7e84dc] [&:hover]:bg-[#6570d2]"
                 >
-                  Save Entry
+                  {isSaving ? "Saving..." : "Save Entry"}
                 </button>
               </div>
             </form>
 
+            {apiError ? <p role="alert" className="project-page__error mt-[12px] mr-0 mb-0 ml-0 text-[#df8f96] text-[12px] text-center mt-4">{apiError}</p> : null}
+
             {submittedEntry ? (
               <section className="mt-5">
-                <h2 className="font-semibold">Latest Saved Draft</h2>
+                <h2 className="font-semibold">Saved part</h2>
                 <PartCard part={submittedEntry} className="mt-2 border-[#c6c1b8] bg-[#e6e6e6]" />
               </section>
             ) : null}
           </article>
         </section>
       </main>
-    </div>
-  );
-}
-
-function CanvasToolbar() {
-  return (
-    <div className="flex items-center justify-between border-b border-[#bcb5aa] bg-[#d9d9d9] px-4 py-2">
-      <div className="inline-flex items-center gap-5 text-[1.15rem] text-[#101010] md:text-[0.98rem]">
-        <span className="inline-flex items-center gap-1">
-          <PenIcon className="h-[18px] w-[18px]" />
-          Sketch
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <PulseIcon className="h-[18px] w-[18px]" />
-          Label
-        </span>
-      </div>
-
-      <ArrowIcon className="h-5 w-5" />
     </div>
   );
 }
@@ -212,7 +218,7 @@ function SketchCanvas({ documentSource }) {
       ...currentLines,
       {
         tool: activeTool,
-        points: [point.x, point.y],
+        points: activeTool === "arrow" ? [point.x, point.y, point.x, point.y] : [point.x, point.y],
       },
     ]);
   };
@@ -231,14 +237,27 @@ function SketchCanvas({ documentSource }) {
       const lastLine = nextLines.at(-1);
       nextLines[nextLines.length - 1] = {
         ...lastLine,
-        points: [...lastLine.points, point.x, point.y],
+        points:
+          lastLine.tool === "arrow"
+            ? [lastLine.points[0], lastLine.points[1], point.x, point.y]
+            : [...lastLine.points, point.x, point.y],
       };
       return nextLines;
     });
   };
 
   const handlePointerUp = () => {
+    if (!isDrawingRef.current) return;
+
     isDrawingRef.current = false;
+    setLines((currentLines) => {
+      const lastLine = currentLines.at(-1);
+      if (!lastLine || lastLine.tool !== "arrow") return currentLines;
+
+      const [startX, startY, endX, endY] = lastLine.points;
+      const distance = Math.hypot(endX - startX, endY - startY);
+      return distance < 6 ? currentLines.slice(0, -1) : currentLines;
+    });
   };
 
   const clearSketch = () => {
@@ -246,27 +265,33 @@ function SketchCanvas({ documentSource }) {
   };
 
   return (
-    <div className="px-2 pb-2 md:px-3 md:pb-3">
-      <div className="mb-2 flex items-center gap-2 border-b border-[#cbc4b8] py-2">
-        <ToolButton active={activeTool === "draw"} onClick={() => setActiveTool("draw")}>
+    <div className="project-entry-sketch min-w-0">
+      <div className="project-entry-sketch-tools min-h-[32px] flex items-center gap-[6px] mb-[10px]" aria-label="Sketch tools">
+        <ToolButton active={activeTool === "draw"} icon={<PenIcon />} onClick={() => setActiveTool("draw")}>
           Draw
         </ToolButton>
-        <ToolButton active={activeTool === "erase"} onClick={() => setActiveTool("erase")}>
+        <ToolButton active={activeTool === "erase"} icon={<EraserIcon />} onClick={() => setActiveTool("erase")}>
           Erase
+        </ToolButton>
+        <ToolButton active={activeTool === "arrow"} icon={<ArrowIcon />} onClick={() => setActiveTool("arrow")}>
+          Arrow
         </ToolButton>
         <button
           type="button"
           onClick={clearSketch}
-          className="rounded border border-[#9f988b] px-2 py-1 text-sm text-[#151515] transition-colors hover:bg-[#d8d3cb]"
+          className="project-entry-tool-button min-h-[30px] inline-flex items-center gap-[6px] py-0 px-[9px] border-0 rounded-[5px] text-[#a3a5ab] bg-transparent text-[12px] cursor-pointer [&:hover]:text-[#f3f3f5] [&:hover]:bg-[#202126] [&.is-active]:text-[#f3f3f5] [&.is-active]:bg-[#202126] [&.is-active]:bg-[#262936] [&_svg]:w-[16px] [&_svg]:h-[16px] [&_svg]:flex-none project-entry-tool-button--clear text-[#85878d]"
         >
+          <TrashIcon />
           Clear
         </button>
-        <span className="ml-auto text-sm text-[#54504a]">{lines.length} annotation{lines.length === 1 ? "" : "s"}</span>
+        <span className="project-entry-annotation-count ml-auto text-[#77797e] text-[12px] whitespace-nowrap">
+          {lines.length} annotation{lines.length === 1 ? "" : "s"}
+        </span>
       </div>
 
       <div
         ref={containerRef}
-        className={`relative h-[360px] w-full overflow-hidden border border-[#948c7f] bg-[#b2bcc1] md:h-[520px] ${
+        className={`project-entry-canvas-frame relative w-full h-[360px] overflow-hidden border border-[#303136] bg-[#101113] [@media_(min-width:768px)]:h-[520px] ${
           activeTool === "erase" ? "cursor-cell" : "cursor-crosshair"
         }`}
       >
@@ -292,18 +317,33 @@ function SketchCanvas({ documentSource }) {
               ) : null}
             </Layer>
             <Layer>
-              {lines.map((line, index) => (
-                <Line
-                  key={`${line.tool}-${index}`}
-                  points={line.points}
-                  stroke={line.tool === "erase" ? "#000" : DRAW_STROKE.color}
-                  strokeWidth={line.tool === "erase" ? ERASER_STROKE.width : DRAW_STROKE.width}
-                  lineCap="round"
-                  lineJoin="round"
-                  globalCompositeOperation={line.tool === "erase" ? "destination-out" : "source-over"}
-                  tension={0.15}
-                />
-              ))}
+              {lines.map((line, index) =>
+                line.tool === "arrow" ? (
+                  <KonvaArrow
+                    key={`${line.tool}-${index}`}
+                    points={line.points}
+                    stroke={ARROW_STROKE.color}
+                    strokeWidth={ARROW_STROKE.width}
+                    fill={ARROW_STROKE.color}
+                    lineCap="round"
+                    lineJoin="round"
+                    pointerLength={ARROW_STROKE.pointerLength}
+                    pointerWidth={ARROW_STROKE.pointerWidth}
+                    globalCompositeOperation="source-over"
+                  />
+                ) : (
+                  <Line
+                    key={`${line.tool}-${index}`}
+                    points={line.points}
+                    stroke={line.tool === "erase" ? "#000" : DRAW_STROKE.color}
+                    strokeWidth={line.tool === "erase" ? ERASER_STROKE.width : DRAW_STROKE.width}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation={line.tool === "erase" ? "destination-out" : "source-over"}
+                    tension={0.15}
+                  />
+                )
+              )}
             </Layer>
           </Stage>
         ) : null}
@@ -339,17 +379,15 @@ function SelectField({ name, label, control, error, options }) {
   );
 }
 
-function ToolButton({ active, onClick, children }) {
+function ToolButton({ active, icon, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded border px-2 py-1 text-sm transition-colors ${
-        active
-          ? "border-[#7f786b] bg-[#c8c1b4] text-[#121212]"
-          : "border-[#9f988b] text-[#151515] hover:bg-[#d8d3cb]"
-      }`}
+      aria-pressed={active}
+      className={`project-entry-tool-button min-h-[30px] inline-flex items-center gap-[6px] py-0 px-[9px] border-0 rounded-[5px] text-[#a3a5ab] bg-transparent text-[12px] cursor-pointer [&:hover]:text-[#f3f3f5] [&:hover]:bg-[#202126] [&.is-active]:text-[#f3f3f5] [&.is-active]:bg-[#202126] [&.is-active]:bg-[#262936] [&_svg]:w-[16px] [&_svg]:h-[16px] [&_svg]:flex-none ${active ? "is-active" : ""}`}
     >
+      {icon}
       {children}
     </button>
   );
@@ -413,11 +451,11 @@ function PenIcon({ className = "" }) {
   );
 }
 
-function PulseIcon({ className = "" }) {
+function EraserIcon({ className = "" }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
       <path
-        d="M3 12h4l2-4 3 8 2-4h7"
+        d="m4 15 8.8-8.8a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L11 19H6.8L4 16.2Zm6.6 4H20M8.8 10.2l5 5"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.7"
@@ -433,6 +471,21 @@ function ArrowIcon({ className = "" }) {
     <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
       <path
         d="M6 12h12m0 0-4-4m4 4-4 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M5 7h14m-9 4v6m4-6v6M9 7l.5-2h5l.5 2m2 0-.6 12H7.6L7 7"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.6"

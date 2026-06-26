@@ -104,3 +104,27 @@ def get_organization_context(
         organization_slug=organization.slug,
         organization_role=role,
     )
+
+
+def require_paid_organization_plan(
+    payload: dict = Depends(verify_clerk_token),
+) -> dict:
+    if not has_paid_organization_plan(payload):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A paid organization plan is required to create additional teams",
+        )
+    return payload
+
+
+def has_paid_organization_plan(payload: dict) -> bool:
+    plans = payload.get("pla")
+    if not isinstance(plans, str):
+        return False
+
+    for plan in plans.split(","):
+        scope, separator, slug = plan.strip().partition(":")
+        if separator and scope == "o" and slug and slug.lower() != "free":
+            return True
+
+    return False

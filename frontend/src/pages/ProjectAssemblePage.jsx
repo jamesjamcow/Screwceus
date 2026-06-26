@@ -1,41 +1,36 @@
 import { useMemo } from "react";
-import { useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { Float, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 
 import PartCard from "../components/parts/PartCard";
-import HomeTopNav from "../components/home/HomeTopNav";
-import ProjectMiniNav from "../components/project/ProjectMiniNav";
-import { PART_FIELDS, createPartRecords, formatPartValue } from "../lib/partSchema";
+import { useProjectParts } from "../hooks/useDrive";
+import { PART_FIELDS, formatPartValue } from "../lib/partSchema";
 
 export default function ProjectAssemblePage() {
-  const { projectId } = useParams();
   const { project } = useOutletContext();
-  const projectName = project.name;
-  const selectedPart = useMemo(() => createPartRecords()[0], []);
+  const projectPartsQuery = useProjectParts(project.id);
+  const selectedLink = projectPartsQuery.data?.[0] ?? null;
+  const selectedPart = selectedLink?.part ?? null;
   const inventorySummary = useMemo(
     () =>
       PART_FIELDS.map((field) => ({
         label: field.label,
-        value: formatPartValue(field.name, selectedPart[field.name]),
+        value: selectedPart ? formatPartValue(field.name, selectedPart[field.name]) : "No linked part",
       })),
     [selectedPart],
   );
 
   return (
-    <div className="min-h-screen bg-[#efefef] text-[#141414]">
-      <HomeTopNav userName="James Jam Cow" />
+    <div className="project-page min-h-full text-[#dddde0] project-assemble-page [@media_(max-width:980px)]:[&_aside]:grid [@media_(max-width:980px)]:[&_aside]:grid-cols-2 [@media_(max-width:720px)]:[&_aside]:grid-cols-1">
+      <main className="project-page__inner my-0 mx-auto pt-[36px] pr-0 pb-[64px] pl-0 [@media_(max-width:720px)]:pt-[26px] [@media_(max-width:720px)]:pr-0 [@media_(max-width:720px)]:pb-[44px] [@media_(max-width:720px)]:pl-0 project-assemble-page__inner [@media_(max-width:720px)]:pt-[26px] [@media_(max-width:720px)]:pr-0 [@media_(max-width:720px)]:pb-[44px] [@media_(max-width:720px)]:pl-0">
+        <div className="project-page__section-heading flex items-end justify-between gap-[40px] mb-[24px] [&>div>span]:block [&>div>span]:mb-[7px] [&>div>span]:text-[#64666c] [&>div>span]:text-[10px] [&>div>span]:font-[680] [&>div>span]:tracking-[.1em] [&>div>span]:uppercase [&_h1]:m-0 [&_h1]:text-[#eeeeef] [&_h1]:text-[22px] [&_h1]:font-[560] [&_h1]:tracking-[-.035em] [&_h1]:leading-[1.05] [&_h2]:m-0 [&_h2]:text-[#eeeeef] [&_h2]:text-[22px] [&_h2]:font-[560] [&_h2]:tracking-[-.035em] [&_h2]:leading-[1.05] [&_h2]:text-[17px] [&>p]:max-w-[430px] [&>p]:m-0 [&>p]:text-[#77797e] [&>p]:text-[12px] [&>p]:leading-[1.55] [&>p]:text-right [@media_(max-width:720px)]:items-start [@media_(max-width:720px)]:flex-col [@media_(max-width:720px)]:gap-[10px] [@media_(max-width:720px)]:[&>p]:text-left">
+          <div><span>Assembly station</span><h1>Build sequence</h1></div>
+          <p>Inspect the active assembly and verify its selected inventory record.</p>
+        </div>
 
-      <main className="mx-auto max-w-[1180px] px-5 pb-8 pt-4 md:px-8 md:pb-12 md:pt-5">
-        <h1 className="text-[2rem] leading-none md:text-[2.15rem]">
-          <span className="font-normal">SpaceX/</span>
-          <span className="font-semibold">{projectName}</span>
-        </h1>
-
-        <ProjectMiniNav active="assemble" projectId={projectId} />
-
-        <section className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px] xl:grid-cols-[minmax(0,1.82fr)_350px]">
-          <article className="overflow-hidden rounded-[8px] border border-[#cfc7ba] bg-[#faf8f3] shadow-[0_1px_0_rgba(0,0,0,0.08)]">
+        <section className="project-assemble-grid grid gap-[20px] [@media_(max-width:980px)]:grid-cols-1">
+          <article className="project-assemble-viewport-card overflow-hidden border border-[#2e3035] rounded-[9px] bg-[#151619]">
             <div className="relative h-[360px] w-full border-b border-[#dfd8cc] bg-[#18382f] md:h-[470px]">
               <Canvas camera={{ position: [5.8, 3.2, 5.8], fov: 34 }}>
                 <color attach="background" args={["#173229"]} />
@@ -72,13 +67,13 @@ export default function ProjectAssemblePage() {
                 React Three Fiber viewport for the active assembly. Swap `AssemblyRig` for your loaded project model when ready.
               </div>
               <div className="shrink-0 rounded-full border border-[#d6cfbf] bg-[#f3efe6] px-3 py-1 text-[#332f28]">
-                Part #{selectedPart.id}
+                {selectedPart ? `Part #${selectedPart.id}` : "No linked part"}
               </div>
             </div>
           </article>
 
           <aside className="flex flex-col gap-5">
-            <section className="rounded-[8px] border border-[#d5cec2] bg-[#faf8f3] px-4 py-4 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+            <section className="project-assemble-schema overflow-hidden border border-[#2e3035] rounded-[9px] bg-[#151619] p-[18px] [&_h2]:text-[#eeeeef] [&_h2]:text-[16px] [&_h2]:font-[560]">
               <h2 className="text-[1.8rem] font-medium leading-none md:text-[1.55rem]">Part Schema</h2>
               <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 text-[1rem] md:grid-cols-2 xl:grid-cols-4 xl:gap-x-4 xl:text-[0.94rem]">
                 {inventorySummary.map((item) => (
@@ -90,25 +85,31 @@ export default function ProjectAssemblePage() {
               </div>
             </section>
 
-            <PartCard
-              part={selectedPart}
-              badge={`#${selectedPart.id}`}
-              preview={<MiniPartCardPreview />}
-              className="rounded-[8px] border-[#bdb6a8] bg-[#f5f4f0]"
-            />
+            {selectedPart ? (
+              <PartCard
+                part={selectedPart}
+                badge={`#${selectedPart.id}`}
+                preview={<MiniPartCardPreview />}
+                className="rounded-[8px] border-[#bdb6a8] bg-[#f5f4f0]"
+              />
+            ) : (
+              <div className="project-overview-empty min-h-[86px] grid place-items-center border border-dashed border-[#303136] rounded-[8px] text-[#71737a] bg-[#131416] text-[12px]">
+                {projectPartsQuery.isPending ? "Loading linked parts..." : "No parts are linked to this project."}
+              </div>
+            )}
           </aside>
         </section>
 
-        <div className="mt-9 flex items-center justify-between px-2 text-[1.2rem] md:px-36 md:text-[0.98rem]">
+        <div className="project-assemble-footer flex justify-end gap-[8px] mt-[18px]">
           <button
             type="button"
-            className="min-w-24 rounded-full border border-transparent px-4 py-2 text-center transition-colors hover:border-[#d1c8bb] hover:bg-[#f7f4ee]"
+            className="project-page__button min-h-[32px] py-0 px-[13px] border border-[#35363b] rounded-[6px] text-[#c7c7ca] bg-[#1a1b1e] text-[12px] cursor-pointer [&:hover]:border-[#47494f] [&:hover]:text-[#fff] [&:hover]:bg-[#222327] [&:disabled]:opacity-[.5] [&:disabled]:cursor-not-allowed"
           >
             Done
           </button>
           <button
             type="button"
-            className="min-w-24 rounded-full border border-transparent px-4 py-2 text-center transition-colors hover:border-[#d1c8bb] hover:bg-[#f7f4ee]"
+            className="project-page__button min-h-[32px] py-0 px-[13px] border border-[#35363b] rounded-[6px] text-[#c7c7ca] bg-[#1a1b1e] text-[12px] cursor-pointer [&:hover]:border-[#47494f] [&:hover]:text-[#fff] [&:hover]:bg-[#222327] [&:disabled]:opacity-[.5] [&:disabled]:cursor-not-allowed"
           >
             Skip
           </button>

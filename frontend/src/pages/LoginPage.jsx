@@ -18,7 +18,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#efefef] text-[#141414]">
       <HomeTopNav />
 
-      <main className="auth-page mx-auto grid min-h-[calc(100vh-65px)] w-full max-w-[1080px] items-center gap-8 px-5 py-10 md:grid-cols-[0.9fr_1fr] md:px-7">
+      <main className="auth-page [&_.cl-rootBox]:w-full [&_.cl-rootBox]:max-w-[26rem] [&_.cl-cardBox]:w-full mx-auto grid min-h-[calc(100vh-65px)] w-full max-w-[1080px] items-center gap-8 px-5 py-10 md:grid-cols-[0.9fr_1fr] md:px-7">
         <section className="max-w-[430px]">
           <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-[8px] border border-[#b8b0a5] bg-[#f7f4ee]">
             <BrandIcon className="h-7 w-7 text-[#141414]" />
